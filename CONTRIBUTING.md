@@ -256,6 +256,10 @@ git revert <commit>        # preferred: adds a commit that undoes it
 
 `dist/` is not committed, so built installers travel as release assets:
 
+The notes for the current release are in `RELEASE_NOTES.md` — paste them into the release
+form (or pass them with `--notes-file RELEASE_NOTES.md`). For later versions, either rewrite
+that file or turn it into one section per version, newest first.
+
 ```bash
 npm run dist
 git tag -a v1.0.0 -m "HotSound 1.0.0"
