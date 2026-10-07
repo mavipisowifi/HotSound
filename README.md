@@ -48,6 +48,8 @@ npm run icons     # logo.png              -> app icon, window icon, UI logo
 npm run assets    # both of the above
 ```
 
+Committing, pushing and releasing is covered in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ### Build a Windows program
 
 ```bash
