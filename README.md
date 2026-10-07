@@ -8,7 +8,8 @@ sweeps a playhead across it while it plays.
 Built with Electron. No native modules, no bundler, no runtime dependencies beyond
 Electron itself.
 
-**Developer:** Marvin Bangcailan — [github.com/mavipisowifi](https://github.com/mavipisowifi)
+**Developer:** Marvin Bangcailan — [@mavipisowifi](https://github.com/mavipisowifi)  
+**Repository:** [mavipisowifi/HotSound](https://github.com/mavipisowifi/HotSound)
 
 The board, top to bottom:
 
@@ -266,6 +267,8 @@ to emit unplated transparent masters for transparent sources.
 
 ## Developer credit
 
+**Marvin Bangcailan** — [@mavipisowifi](https://github.com/mavipisowifi) — see [AUTHORS.md](AUTHORS.md) for the author record and the third-party component licences.
+
 The credit is defined once, in `package.json`, and reaches every surface from there:
 
 | Field | Effect |
@@ -291,6 +294,7 @@ logo.png               Source artwork (as delivered)
 font/                  Source fonts: Google Sans, 8 faces (as delivered)
 package.json           Scripts, electron-builder config, author/credit metadata
 LICENSE                MIT
+AUTHORS.md             Author, where the credit appears, third-party licences
 
 build/
   icon.png             Square icon master -> electron-builder makes the .ico
