@@ -1,0 +1,746 @@
+/* HotSound - theme derived from the reference keyboard art:
+   dark green board, mint accent, muted keycap zones. */
+
+:root {
+  --bg: #0b1611;
+  --panel: #142219;
+  --panel-2: #17261f;
+  --panel-3: #1c2e25;
+  --line: #2b4638;
+  --line-soft: #22392e;
+  --mint: #bbeacc;
+  --mint-dim: #6aaa96;
+  --text: #d3e8dd;
+  --text-dim: #8aa79a;
+  --text-faint: #5f7d70;
+  --danger: #d98b7f;
+  --shadow: 0 18px 40px rgba(0, 0, 0, 0.45);
+  --radius: 12px;
+  /* The only font the app specifies. Each face is declared in fonts.css. */
+  --font: "Google Sans";
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* An author `display` rule outranks the UA stylesheet's `[hidden]`, which would
+   otherwise leave full-screen overlays painted over the whole app. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #1b2f24 0%, transparent 60%),
+    radial-gradient(900px 500px at 100% 100%, #16271e 0%, transparent 55%),
+    var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border: 6px solid #0f2018;
+  box-shadow: inset 0 0 0 1px rgba(187, 234, 204, 0.16);
+  border-radius: 10px;
+}
+
+/* ---------------- top bar ---------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 12px 18px;
+  background: linear-gradient(180deg, #17281f, #12201a);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 280px;
+}
+
+/* The artwork carries its own light background, so it needs a frame rather than a
+   plate behind it. */
+.brand-logo {
+  height: 48px;
+  width: auto;
+  max-width: 150px;
+  object-fit: contain;
+  flex: none;
+  /* The artwork brings its own background and its own silhouette (currently a round
+     badge with transparent corners), so it is framed with a drop shadow, which follows
+     that silhouette. A box shadow or a border radius would draw a square behind a
+     circle. */
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.5));
+}
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 19px;
+  letter-spacing: 0.4px;
+  color: var(--mint);
+}
+
+.brand-text p {
+  margin: 1px 0 0;
+  font-size: 11.5px;
+  color: var(--text-faint);
+}
+
+.topbar-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+  flex-wrap: wrap;
+}
+
+/* ---------------- buttons + fields ---------------- */
+
+.btn {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: linear-gradient(180deg, var(--panel-3), #16241d);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: border-color 0.14s, transform 0.06s, background 0.14s;
+}
+
+.btn:hover {
+  border-color: var(--mint-dim);
+  background: linear-gradient(180deg, #223a2e, #182821);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.btn.primary {
+  background: linear-gradient(180deg, var(--mint), var(--mint-dim));
+  border-color: #0d1f17;
+  color: #0c1e16;
+  font-weight: 650;
+}
+
+.btn.primary:hover {
+  background: linear-gradient(180deg, #ccf3dc, #7bbca6);
+}
+
+.btn.danger {
+  border-color: #4b2f2c;
+  color: #f0c2ba;
+}
+
+.btn.danger:hover {
+  border-color: var(--danger);
+  background: linear-gradient(180deg, #35221f, #241715);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.field.inline {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+
+.field > span {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+
+.field output {
+  color: var(--mint);
+  font-variant-numeric: tabular-nums;
+}
+
+.field.checkbox {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  text-transform: none;
+  font-size: 12px;
+  color: var(--text);
+}
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--mint-dim), #2a4739);
+  outline: none;
+  cursor: pointer;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--mint);
+  border: 2px solid #0e1c15;
+  box-shadow: 0 0 8px rgba(187, 234, 204, 0.4);
+}
+
+input[type="text"],
+select {
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: #0f1d16;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 6px 8px;
+  width: 100%;
+}
+
+input[type="text"]:focus,
+select:focus {
+  border-color: var(--mint-dim);
+  outline: none;
+}
+
+input[type="checkbox"] {
+  accent-color: var(--mint-dim);
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------------- stage ---------------- */
+
+.stage {
+  flex: 1;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  gap: 14px;
+  padding: 14px;
+  min-height: 0;
+}
+
+.board-panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: linear-gradient(180deg, var(--panel-2), #101d17);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  flex-wrap: wrap;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 13px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--mint-dim);
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.legend-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: inline-block;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+
+.board-scroll {
+  flex: 1;
+  padding: 16px 12px;
+  overflow: auto;
+  min-height: 0;
+}
+
+.board {
+  position: relative;
+  width: 100%;
+  --u: 48px;
+  --gappx: 2px;
+}
+
+.hint {
+  margin: 0;
+  padding: 9px 16px 12px;
+  font-size: 11px;
+  color: var(--text-faint);
+  border-top: 1px solid var(--line-soft);
+}
+
+.hint.small {
+  border: none;
+  padding: 4px 0 0;
+  font-size: 10.5px;
+}
+
+/* ---------------- sound wave preview ---------------- */
+
+.wave-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px 14px;
+  background: linear-gradient(180deg, var(--panel-2), #101d17);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.wave-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.np-key {
+  flex: none;
+  min-width: 74px;
+  padding: 9px 10px;
+  text-align: center;
+  border-radius: 8px;
+  background: linear-gradient(180deg, var(--mint), var(--mint-dim));
+  color: #0c1e16;
+  font-weight: 800;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.22);
+}
+
+.np-meta {
+  min-width: 0;
+  flex: 1;
+}
+
+.np-sound {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--mint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.np-sub {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.np-time {
+  flex: none;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+  min-width: 86px;
+  text-align: right;
+}
+
+.wave-canvas {
+  display: block;
+  width: 100%;
+  height: 108px;
+  border-radius: 8px;
+  border: 1px solid var(--line-soft);
+  background: #0a1710;
+}
+
+/* ---------------- keycaps ---------------- */
+
+.key {
+  position: absolute;
+  /* Whole-pixel geometry (integer unit + even gap): fractional edges are what
+     make a keycap grid look soft. */
+  left: calc(var(--x) * var(--u) + var(--gappx) / 2);
+  top: calc(var(--y) * var(--u) + var(--gappx) / 2);
+  width: calc(var(--w) * var(--u) - var(--gappx));
+  height: calc(var(--u) - var(--gappx));
+  padding: 4px 5px 3px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 2px;
+  border-radius: 7px;
+  border: 1px solid rgba(0, 0, 0, 0.45);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--fill) 86%, white 14%), var(--fill) 55%, color-mix(in srgb, var(--fill) 72%, black 28%));
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.4),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: filter 0.14s, transform 0.06s, box-shadow 0.14s;
+}
+
+.key:hover {
+  filter: brightness(1.12);
+}
+
+.key:active {
+  transform: translateY(1px);
+}
+
+.key-cap {
+  font-size: var(--fs-cap, 11px);
+  font-weight: 700;
+  line-height: 1;
+  opacity: 0.8;
+  letter-spacing: 0;
+  pointer-events: none;
+}
+
+.key-title {
+  font-size: var(--fs-title, 10px);
+  line-height: 1.1;
+  font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.key-badges {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  display: flex;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.badge {
+  font-style: normal;
+  font-size: 9px;
+  line-height: 1;
+  padding: 2px 3px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.32);
+  color: #eaf6ef;
+}
+
+.badge.loop {
+  background: rgba(12, 32, 24, 0.75);
+  color: var(--mint);
+}
+
+.badge.global {
+  background: rgba(187, 234, 204, 0.85);
+  color: #10231a;
+  font-weight: 700;
+}
+
+.badge.err {
+  background: #7d2f27;
+  color: #ffd9d2;
+  font-weight: 700;
+}
+
+.key-pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 60%, rgba(255, 255, 255, 0.75), transparent 70%);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.key.hit .key-pulse {
+  animation: pulse 0.18s ease-out;
+}
+
+@keyframes pulse {
+  from {
+    opacity: 0.85;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* empty slot: keeps its zone hue but reads as unassigned */
+.key.empty {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--fill) 26%, #16241d 74%), #131f19);
+  color: color-mix(in srgb, var(--ink) 40%, #cfe4d9 60%);
+  border-color: rgba(0, 0, 0, 0.5);
+}
+
+.key.empty .key-title {
+  display: none;
+}
+
+/* Lit while a voice from this key is sounding. */
+.key.sounding {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.45),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.28),
+    0 0 0 2px var(--mint),
+    0 0 18px rgba(187, 234, 204, 0.5);
+  filter: brightness(1.12);
+  z-index: 3;
+}
+
+.key.looping::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--mint);
+  opacity: 0.85;
+}
+
+.key.errored {
+  outline: 2px solid var(--danger);
+  outline-offset: -2px;
+}
+
+.key.drop-target {
+  outline: 2px dashed var(--mint);
+  outline-offset: -3px;
+  filter: brightness(1.3);
+}
+
+.key.nav {
+  border-radius: 6px;
+}
+
+/* Muted keys are printed on the board but are not slots: they keep their place
+   and legend, and read as switched off. */
+.key.muted {
+  cursor: default;
+  background: linear-gradient(180deg, #223029, #1a2620);
+  border-color: rgba(0, 0, 0, 0.55);
+  border-style: dashed;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  color: var(--text-faint);
+}
+
+.key.muted .key-cap {
+  opacity: 0.55;
+}
+
+.key.muted::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(187, 234, 204, 0.07) 0 2px,
+    transparent 2px 6px
+  );
+  pointer-events: none;
+}
+
+.legend-item.muted-legend i {
+  background: linear-gradient(180deg, #223029, #1a2620);
+  border: 1px dashed rgba(187, 234, 204, 0.45);
+}
+
+/* ---------------- status bar, menu, veil ---------------- */
+
+.statusbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 7px 16px;
+  font-size: 11.5px;
+  color: var(--text-dim);
+  background: #0e1c15;
+  border-top: 1px solid var(--line);
+}
+
+.statusbar .spacer {
+  flex: 1;
+}
+
+#status-msg[data-kind="error"] {
+  color: #f0b3a8;
+}
+
+.keys-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(187, 234, 204, 0.12);
+  border: 1px solid var(--line);
+  color: var(--mint-dim);
+  cursor: pointer;
+  user-select: none;
+}
+
+.keys-badge:hover {
+  border-color: var(--mint-dim);
+  color: var(--mint);
+}
+
+.keys-badge.off {
+  color: #c9a08f;
+  border-color: #4b2f2c;
+  background: rgba(217, 139, 127, 0.1);
+}
+
+/* Developer credit. Kept quiet: it sits with the other status readouts rather
+   than in the working area. */
+.developer {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 8px 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line-soft);
+  background: rgba(187, 234, 204, 0.05);
+  white-space: nowrap;
+}
+
+.dev-label {
+  font-size: 9.5px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.dev-name {
+  color: var(--text);
+}
+
+.dev-link {
+  font: inherit;
+  font-size: 10.5px;
+  color: var(--mint-dim);
+  background: none;
+  border: none;
+  padding: 0 0 0 7px;
+  border-left: 1px solid var(--line);
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.dev-link:hover {
+  color: var(--mint);
+}
+
+.dev-link:disabled {
+  color: var(--text-faint);
+  text-decoration: none;
+  cursor: default;
+}
+
+.profile-badge {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(187, 234, 204, 0.08);
+  border: 1px solid var(--line);
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-badge:hover {
+  border-color: var(--mint-dim);
+  color: var(--mint);
+}
+
+.drop-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 24, 18, 0.55);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--mint);
+  letter-spacing: 1px;
+  pointer-events: none;
+}
+
+@media (max-height: 700px) {
+  .wave-canvas {
+    height: 74px;
+  }
+
+  .hint {
+    display: none;
+  }
+}

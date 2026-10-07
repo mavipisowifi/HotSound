@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file:; font-src 'self' file:; media-src 'self' blob: file:;"
+    />
+    <title>HotSound</title>
+    <link rel="stylesheet" href="fonts.css" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <img class="brand-logo" src="assets/logo.png" alt="HotSound logo" />
+          <div class="brand-text">
+            <h1>HotSound</h1>
+            <p>Hotkey soundboard on a PC keyboard map &middot; numpad excluded</p>
+          </div>
+        </div>
+
+        <div class="topbar-controls">
+          <label class="field inline">
+            <span>Master</span>
+            <input id="master-volume" type="range" min="0" max="1.2" step="0.01" value="0.9" />
+            <output id="master-volume-out">90%</output>
+          </label>
+          <button id="btn-load-folder" class="btn" type="button">Load folder&hellip;</button>
+          <button id="btn-open-profile" class="btn" type="button" title="Open a profile from anywhere on disk">
+            Open profile&hellip;
+          </button>
+          <button id="btn-save-profile" class="btn" type="button" title="Save the profile anywhere on disk">
+            Save profile&hellip;
+          </button>
+          <button id="btn-stop-all" class="btn danger" type="button" title="Stop every playing sound">
+            Stop all
+          </button>
+        </div>
+      </header>
+
+      <main class="stage">
+        <section class="board-panel">
+          <div class="panel-head">
+            <h2>Keyboard slots</h2>
+            <div class="legend" id="legend"></div>
+          </div>
+          <div class="board-scroll">
+            <div class="board" id="board" role="group" aria-label="Keyboard slot map"></div>
+          </div>
+          <p class="hint">
+            Click an empty key to add music &middot; Click a key with music to play it &middot;
+            Right-click to remove the music &middot; Drop audio files onto keys &middot;
+            Shift+click toggles loop
+          </p>
+        </section>
+
+        <section class="wave-panel" aria-label="Sound wave preview">
+          <div class="wave-head">
+            <div class="np-key" id="np-key">-</div>
+            <div class="np-meta">
+              <div class="np-sound" id="np-sound">no sound loaded</div>
+              <div class="np-sub" id="np-sub">Click an empty key to add music</div>
+            </div>
+            <div class="np-time" id="np-time"></div>
+          </div>
+          <canvas id="wave-canvas" class="wave-canvas"></canvas>
+        </section>
+      </main>
+
+      <footer class="statusbar">
+        <span id="status-msg">Ready</span>
+        <span class="spacer"></span>
+        <span id="developer" class="developer" title="Developer">
+          <span class="dev-label">dev</span>
+          <span class="dev-name" id="dev-name">Marvin Bangcailan</span>
+          <button id="dev-github" class="dev-link" type="button" title="https://github.com/mavipisowifi">
+            GitHub
+          </button>
+        </span>
+        <span id="profile-badge" class="profile-badge" title="Active profile - click to show it in Explorer">
+          profile: -
+        </span>
+        <span id="status-voices">0 voices</span>
+        <span id="status-keys" class="keys-badge" title="Slot key capture is active">keys: on</span>
+      </footer>
+    </div>
+
+    <div class="drop-veil" id="drop-veil" hidden><span>Drop samples to assign</span></div>
+
+    <script src="layout.js"></script>
+    <script src="audio.js"></script>
+    <script src="waveform.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

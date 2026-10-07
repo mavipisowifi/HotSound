@@ -1,0 +1,93 @@
+TERMS OF SERVICE AND PRIVACY POLICY
+HotSound (Music Spinner)
+Last updated: 7 October 2026
+
+
+1. ACCEPTANCE OF THESE TERMS
+
+By installing or using HotSound you agree to these terms. If you do not
+agree with them, do not install the software.
+
+
+2. WHAT HOTSound IS
+
+HotSound is a desktop soundboard for Windows. It shows a PC keyboard
+layout on screen; each key can hold a sound, and pressing that key plays
+it. It runs entirely on your own computer. There are no user accounts, no
+sign-in, and no server component.
+
+
+3. YOUR FILES AND YOUR RESPONSIBILITY
+
+You choose which audio files to load into HotSound. You are responsible
+for holding the rights to those files and for anything you play, record or
+publish with them. This software does not include any audio content, and
+it does not upload, share or transmit your files to anyone.
+
+
+4. NO WARRANTY
+
+HotSound is provided "as is", without warranty of any kind, express or
+implied, including but not limited to the warranties of merchantability,
+fitness for a particular purpose and non-infringement. You use it at your
+own risk.
+
+
+5. LIMITATION OF LIABILITY
+
+To the greatest extent permitted by law, the developer is not liable for
+any claim, damage or other liability arising from the software or its use,
+whether in an action of contract, tort or otherwise.
+
+
+6. CHANGES TO THESE TERMS
+
+These terms may be revised with a new release. The date at the top of this
+document is updated whenever they change, and the version you are shown at
+install time is the version that applies to that installation.
+
+
+7. PRIVACY POLICY
+
+7.1 What is collected
+    Nothing. HotSound has no telemetry, no analytics, no usage reporting
+    and no accounts. The developer receives no information about you or
+    about how you use the software.
+
+7.2 What the software reads
+    Only the audio files you explicitly select, and its own profile and
+    settings files described below. It does not scan your disks and does
+    not read any file you have not chosen.
+
+7.3 What the software writes
+    Two small text files in your Windows application-data folder, under
+    HotSound: a profile holding your key assignments, and a settings file
+    holding the location of that profile. If you use "Save profile", a
+    profile is written to the location you pick instead. Nothing else is
+    written anywhere.
+
+7.4 Network activity
+    The software itself makes no network requests: it does not check for
+    updates and does not contact any server. It contains one web link, to
+    the developer's GitHub page. That link opens in your own browser only
+    when you click it, and once open it is governed by GitHub's own terms
+    and privacy policy.
+
+7.5 Uninstalling
+    Uninstalling removes the application. Your profile and settings are
+    deliberately left behind so that reinstalling does not lose your setup.
+    Delete the HotSound folder in your application-data folder to remove
+    them as well.
+
+7.6 Children and third parties
+    The software is not directed at children, and because nothing is
+    collected, nothing is shared or sold to third parties.
+
+
+8. CONTACT
+
+Developer: Marvin Bangcailan
+https://github.com/mavipisowifi
+
+Questions about these terms, or about anything in this document, are
+welcome at the address above.

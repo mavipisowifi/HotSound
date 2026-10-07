@@ -1,0 +1,64 @@
+{
+  "name": "hotsound",
+  "productName": "HotSound",
+  "version": "1.0.0",
+  "description": "HotSound - a hotkey soundboard whose slots are plotted on a PC keyboard layout (numpad excluded).",
+  "main": "main.js",
+  "author": {
+    "name": "Marvin Bangcailan",
+    "url": "https://github.com/mavipisowifi"
+  },
+  "homepage": "https://github.com/mavipisowifi",
+  "copyright": "Copyright (c) 2026 Marvin Bangcailan",
+  "license": "MIT",
+  "scripts": {
+    "assets": "npm run fonts && npm run icons",
+    "dist": "npm run fonts && electron-builder --win",
+    "dist:portable": "npm run fonts && electron-builder --win portable",
+    "e2e": "npm run fonts && node test/run.js e2e",
+    "fonts": "node tools/make-font-css.js",
+    "icons": "electron tools/make-icons.js",
+    "smoke": "npm run fonts && node test/run.js smoke",
+    "start": "npm run fonts && electron .",
+    "test": "npm run fonts && node test/run.js both",
+    "verify:cancel": "electron . --repro-cancel=app"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.hotsound.musicspinner",
+    "productName": "HotSound",
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer/**/*",
+      "assets/**/*"
+    ],
+    "win": {
+      "icon": "build/icon.png",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "HotSound",
+      "include": "installer/terms-page.nsh"
+    }
+  }
+}
