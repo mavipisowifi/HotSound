@@ -1,20 +1,19 @@
 # Working on this repository
 
-A practical guide to committing changes here, written for the machine this project
-was set up on (Windows, Git Bash). Everything below has been run and verified on it.
+A practical guide to committing changes here, written for the machine this project was
+set up on (Windows, Git Bash). Everything below has been run and verified on it.
 
 ---
 
 ## Where things stand right now
 
-The project is **already committed and pushed**:
-
 | | |
 | --- | --- |
-| Repository | https://github.com/mml1-glitch/HotSound |
-| Visibility | private |
+| Repository | https://github.com/mavipisowifi/HotSound |
+| Visibility | public |
 | Branch | `main`, tracking `origin/main`, working tree clean |
-| Author on commits | `mml1-glitch <mml1@pisdavao.com>` |
+| Remote | `origin` -> `https://github.com/mavipisowifi/HotSound.git` |
+| Commits authored as | `mml1-glitch <mml1@pisdavao.com>` (the git identity on this machine) |
 
 So there is nothing to do for a "first commit" — the steps below are for every commit
 after it. Check the state at any time:
@@ -50,49 +49,70 @@ git config --global user.name "Your Name"
 git config --global user.email "you@example.com"
 ```
 
-This is the name on the commit, not the account used to push. Keeping them the same
-avoids confusion later.
+This is the name on the commit, not the account used to push.
 
-### 2. The account that owns the repository
-
-```bash
-gh auth status
-```
-
-Expected: `Logged in to github.com account mml1-glitch`. If it is not logged in:
+**These are currently a different account from the one that owns the repository**, so
+commits appear in `mavipisowifi/HotSound` attributed to `mml1-glitch`. To re-author them
+(a history rewrite, safe while nobody else has cloned the repository):
 
 ```bash
-gh auth login          # GitHub.com -> HTTPS -> login with a browser
+git config --global user.name  mavipisowifi
+git config --global user.email mavipisowifi@users.noreply.github.com
+
+# re-author every commit on this branch
+git rebase --root --exec 'git commit --amend --no-edit --reset-author'
+git push --force-with-lease
 ```
 
-### 3. Which account git pushes as
+Using the `@users.noreply.github.com` address is the reliable way to have GitHub link
+commits to that account without publishing a real email address.
+
+### 2. Which account git pushes as
+
+Pushing uses the **Windows credential manager** entry for github.com, which belongs to
+**mavipisowifi** — the owner of this repository. That is why `git push` works here; it
+needs no setup beyond having signed in to GitHub on this machine at some point.
 
 ```bash
-gh auth setup-git
+git config --get-regexp "^credential"      # expect: credential.helper manager
 ```
 
-This points git at the GitHub CLI's token for github.com. It matters here because the
-repository is owned by **mml1-glitch**, while Windows' own stored credential for
-github.com belongs to a different account (**mavipisowifi**). Pushing a *private* repo
-with an account that cannot see it does not return a permission error — GitHub answers
+**Do not run `gh auth setup-git` on this machine as things stand.** It points github.com
+at the GitHub CLI's token instead, and the CLI is logged in as a *different* account
+(`mml1-glitch`) with no access to this repository. Pushing a repository the active
+account cannot see does not report a permission problem — GitHub says the repository does
+not exist:
 
 ```
 remote: Repository not found.
-fatal: repository 'https://github.com/mml1-glitch/HotSound.git/' not found
+fatal: repository 'https://github.com/mavipisowifi/HotSound.git/' not found
 ```
 
-which reads like the repo is gone when the real problem is the credentials. After
-`gh auth setup-git`, `~/.gitconfig` contains:
+which reads like the repository is gone when the real problem is the credentials.
 
-```ini
-[credential "https://github.com"]
-	helper =
-	helper = !'C:\Program Files\GitHub CLI\gh.exe' auth git-credential
+### 3. The GitHub CLI account
+
+```bash
+gh auth status      # currently: Logged in to github.com account mml1-glitch
 ```
 
-To hand github.com back to the Windows credential manager instead — which would push
-as `mavipisowifi`, and only works if that account has access to the repo — delete those
-two `helper` lines from `~/.gitconfig`.
+The CLI is separate from git's push credentials, and it is logged in as the wrong account
+for this repository. What that means in practice:
+
+| `gh` command | Works today? |
+| --- | --- |
+| `gh repo view`, `gh api` (reads) | yes — the repository is public |
+| `gh release create`, `gh repo edit`, `gh issue create` (writes) | **no** — they would act as `mml1-glitch` |
+
+To switch it to the owning account:
+
+```bash
+gh auth login           # GitHub.com -> HTTPS -> browser, sign in as mavipisowifi
+gh auth switch          # later, to move between accounts
+```
+
+Until then, publish releases from the repository's web page rather than with
+`gh release create` (see [Cutting a release](#cutting-a-release)).
 
 ---
 
@@ -149,9 +169,9 @@ Deliberately ignored (see `.gitignore`):
 | `renderer/fonts/`, `renderer/fonts.css` | generated from `font/` by `npm run fonts` |
 
 The generated font files are the ones worth knowing about: `npm start`, `npm test`,
-`npm run smoke`, `npm run e2e` and `npm run dist` each run `npm run fonts` first, so
-they regenerate themselves and never need committing. That keeps ~16 MB of duplicated
-font files out of the repository. The generated **icons** are committed instead, because
+`npm run smoke`, `npm run e2e` and `npm run dist` each run `npm run fonts` first, so they
+regenerate themselves and never need committing. That keeps ~16 MB of duplicated font
+files out of the repository. The generated **icons** are committed instead, because
 regenerating those needs Electron.
 
 So a fresh clone needs exactly: `npm install`, then `npm start`. Nothing else.
@@ -167,7 +187,7 @@ warning: in the working copy of 'README.md', LF will be replaced by CRLF the nex
 ```
 
 That is `core.autocrlf=true` working as intended: the repository stores LF line endings,
-the working copy gets CRLF. Nothing to fix and nothing to configure.
+the working copy gets CRLF. Nothing to fix.
 
 ---
 
@@ -175,20 +195,25 @@ the working copy gets CRLF. Nothing to fix and nothing to configure.
 
 ```bash
 gh repo view --json url,visibility,pushedAt
-gh api repos/mml1-glitch/HotSound/commits \
+gh api repos/mavipisowifi/HotSound/commits \
   --jq '.[] | .sha[0:7] + "  " + (.commit.message | split("\n") | .[0])'
 git ls-tree -r --name-only origin/main | wc -l     # files on the remote branch
+git ls-remote origin                                # the commit the remote points at
 ```
 
-Or open https://github.com/mml1-glitch/HotSound (or `gh repo view --web`).
+Or open https://github.com/mavipisowifi/HotSound (or `gh repo view --web`).
 
 ---
 
 ## When something goes wrong
 
 **`remote: Repository not found` when pushing**
-Credentials, not a missing repo. Check `gh auth status`, then run `gh auth setup-git`,
-then push again. Confirm the owner and name: `gh repo view`.
+Almost always credentials, not a missing repository. The account git is pushing as cannot
+see the repository. Check what git will use (`git config --get-regexp "^credential"`) and
+which account the CLI is on (`gh auth status`). If `gh auth setup-git` has been run, the
+CLI's account is being used for github.com — undo it by deleting the
+`[credential "https://github.com"]` section from `~/.gitconfig` so the Windows credential
+manager is used again.
 
 **`! [rejected] main -> main (fetch first)`**
 The remote has commits you do not have locally (for example, edited on github.com):
@@ -210,8 +235,8 @@ echo "path/to/file" >> .gitignore
 git commit -m "Stop tracking path/to/file"
 ```
 
-It remains in the history. If it was a credential, rotate it — and treat it as exposed
-if the repository is public.
+It remains in the history. If it was a credential, rotate it — and treat it as exposed if
+the repository is public.
 
 **Undo the last commit but keep the changes**
 
@@ -235,6 +260,16 @@ git revert <commit>        # preferred: adds a commit that undoes it
 npm run dist
 git tag -a v1.0.0 -m "HotSound 1.0.0"
 git push origin v1.0.0
+```
+
+The tag push uses the same credentials as a normal push, so it works today. Publishing
+the release itself needs a `gh` account with write access, which the CLI does not have
+yet — so either sign in as the owner first (see setup 3), or use the web page:
+**Releases -> Draft a new release**, choose the tag, and attach the two `.exe` files.
+
+Once `gh` is on the owning account:
+
+```bash
 gh release create v1.0.0 \
   "dist/HotSound Setup 1.0.0.exe" \
   "dist/HotSound 1.0.0.exe" \
@@ -243,3 +278,21 @@ gh release create v1.0.0 \
 ```
 
 Bump the version in `package.json` first if the release is more than a rebuild.
+
+---
+
+## A second, duplicate repository
+
+An earlier push went to `mml1-glitch/HotSound` (private). It was created by mistake: the
+GitHub CLI was logged in as that account when the repository was set up. It holds the same
+three commits and is no longer the remote for this project.
+
+Delete it from the account that owns it:
+
+```bash
+gh auth login                                    # sign in as mml1-glitch if needed
+gh repo delete mml1-glitch/HotSound --yes
+```
+
+Or from the web: that repository's Settings -> General -> Danger Zone -> Delete this
+repository. Nothing here depends on it.

@@ -8,7 +8,7 @@
     "name": "Marvin Bangcailan",
     "url": "https://github.com/mavipisowifi"
   },
-  "homepage": "https://github.com/mavipisowifi",
+  "homepage": "https://github.com/mavipisowifi/HotSound",
   "copyright": "Copyright (c) 2026 Marvin Bangcailan",
   "license": "MIT",
   "scripts": {
@@ -60,5 +60,12 @@
       "shortcutName": "HotSound",
       "include": "installer/terms-page.nsh"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mavipisowifi/HotSound.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mavipisowifi/HotSound/issues"
   }
 }
