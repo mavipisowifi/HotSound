@@ -308,6 +308,7 @@ renderer/
   app.js               State, board DOM, hotkey capture, click/right-click, store
   fonts.css            GENERATED @font-face rules (the only font declarations)
   fonts/               GENERATED copies of the faces, so the renderer is self-contained
+                       Both are gitignored - npm start, dist and test regenerate them
   assets/logo.png      UI logo
 
 test/
