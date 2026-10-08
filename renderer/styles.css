@@ -246,10 +246,170 @@ input[type="checkbox"] {
 .stage {
   flex: 1;
   display: grid;
+  grid-template-columns: minmax(0, 1fr) 286px;
   grid-template-rows: minmax(0, 1fr) auto;
   gap: 14px;
   padding: 14px;
   min-height: 0;
+}
+
+/* Board on the left, keys playing now on the right, waveform across the bottom. */
+.board-panel {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.playing-panel {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: linear-gradient(180deg, var(--panel-2), #101d17);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+
+.wave-panel {
+  grid-column: 1 / -1;
+  grid-row: 2;
+}
+
+/* ---------------- equalizer faders ---------------- */
+
+.eq-bank {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: linear-gradient(180deg, #0d1b15, #0b1712);
+}
+
+.eq-canvas {
+  display: block;
+  width: 100%;
+  height: 78px;
+}
+
+/* ---------------- playing now ---------------- */
+
+.playing-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.playing-empty {
+  margin: auto;
+  text-align: center;
+  font-size: 11.5px;
+  color: var(--text-faint);
+  padding: 0 10px;
+  line-height: 1.5;
+}
+
+.playing-row {
+  position: relative;
+  flex: none;
+  padding: 8px 10px 9px 13px;
+  border-radius: 9px;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(0, 0, 0, 0.18));
+  overflow: hidden;
+  animation: playing-in 140ms ease-out;
+}
+
+/* Tinted by the slot's own zone colour, so a row matches its keycap. */
+.playing-row::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--zone-fill, var(--mint));
+}
+
+@keyframes playing-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: none; }
+}
+
+.playing-row.leaving {
+  animation: playing-out 200ms ease-in forwards;
+}
+
+@keyframes playing-out {
+  to { opacity: 0; transform: translateY(-4px); }
+}
+
+.playing-top {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.playing-key {
+  flex: none;
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+  color: var(--zone-fill, var(--mint));
+  min-width: 26px;
+}
+
+.playing-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.playing-loop {
+  flex: none;
+  font-size: 10px;
+  color: var(--mint);
+}
+
+.playing-time {
+  margin-top: 3px;
+  font-size: 10.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-faint);
+}
+
+/* How far through the sound it is, as a rule along the bottom of the row. */
+.playing-bar {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  background: var(--zone-fill, var(--mint));
+  opacity: 0.75;
+}
+
+.playing-count {
+  margin-left: auto;
+  font-size: 10.5px;
+  color: var(--text-faint);
+  letter-spacing: 0.4px;
+}
+
+@media (max-height: 760px) {
+  .eq-canvas {
+    height: 56px;
+  }
 }
 
 .board-panel {

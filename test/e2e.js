@@ -357,6 +357,106 @@ async function run(win) {
       + `nonHttpRejected=${identity.rejected.filter(Boolean).length}/4`
   });
 
+  // The two playback visualisations: the list of keys playing now, and the
+  // equalizer bank reading the mix through the engine's analyser.
+  const panels = await win.webContents.executeJavaScript(
+    `(async () => {
+       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+       const HS = window.HS;
+       const playing = HS.app.getPlaying();
+       const eq = HS.app.getEq();
+       const out = {};
+
+       const list = document.querySelector('.playing-list');
+       out.rowsIdle = playing.count();
+
+       const put = (code, p, name) => {
+         const slot = HS.app.state.slots[code] || { code };
+         Object.assign(slot, { code, path: p, name, volume: 1, rate: 1, pan: 0, loop: false, global: false, error: '' });
+         HS.app.state.slots[code] = slot;
+       };
+
+       // Play two different keys, so the list has to hold more than one row.
+       put('KeyA', ${JSON.stringify(files.a)}, 'kick.wav');
+       put('KeyB', ${JSON.stringify(files.b)}, 'snare.wav');
+       await HS.app.triggerSlot('KeyA');
+       await HS.app.triggerSlot('KeyB');
+       await sleep(220);
+
+       out.rowsPlaying = playing.count();
+       out.rowCodes = playing.codes().sort();
+       out.domRows = list.querySelectorAll('.playing-row').length;
+       const row = list.querySelector('.playing-row');
+       out.firstRow = row ? {
+         key: row.querySelector('.playing-key').textContent,
+         name: row.querySelector('.playing-name').textContent,
+         time: row.querySelector('.playing-time').textContent,
+         bar: row.querySelector('.playing-bar').style.width,
+         zone: row.style.getPropertyValue('--zone-fill')
+       } : null;
+       out.countLabel = document.getElementById('playing-count').textContent;
+       const t = (out.firstRow || {}).time || '';
+       out.timeLooksRight = t.includes(' / ') && t.includes(':') && t.length >= 11;
+
+       // The analyser must be reporting something while audio is playing, otherwise
+       // the faders are decorative.
+       const spec = HS.app.engine.spectrum(16);
+       out.spectrumBands = spec.length;
+       out.spectrumPeak = Math.max.apply(null, spec);
+       out.spectrumNonZero = spec.filter((v) => v > 0).length;
+
+       // The faders must be painted, not merely fed: sample a line across the bank
+       // and count pixels that are lit rather than groove.
+       const eqCanvas = document.getElementById('eq-canvas');
+       const eq2d = eqCanvas.getContext('2d');
+       const scan = eq2d.getImageData(0, Math.floor(eqCanvas.height * 0.92), eqCanvas.width, 1).data;
+       let lit = 0;
+       for (let i = 0; i < scan.length; i += 4) if (scan[i + 1] > 90) lit++;
+       out.eqLitPixels = lit;
+       out.eqWidth = eqCanvas.width;
+
+       // Stop everything: the rows must go away on their own.
+       HS.app.engine.stopAll();
+       await sleep(500);
+       out.rowsAfterStop = playing.count();
+       out.domRowsAfterStop = list.querySelectorAll('.playing-row').length;
+       out.hintBack = !!list.querySelector('.playing-empty');
+       out.countAfterStop = document.getElementById('playing-count').textContent;
+       return out;
+     })()`,
+    true
+  );
+
+  result.steps.push({
+    name: 'playing list tracks sounding keys',
+    pass: panels.rowsIdle === 0 && panels.rowsPlaying === 2
+      && panels.rowCodes.join(',') === 'KeyA,KeyB'
+      && panels.domRows === 2
+      && !!panels.firstRow && panels.firstRow.name.length > 0
+      && panels.firstRow.time.length > 0 && panels.timeLooksRight
+      && parseFloat(panels.firstRow.bar) >= 0
+      && !!panels.firstRow.zone
+      && panels.countLabel === '2 playing',
+    detail: `idle=${panels.rowsIdle} playing=${panels.rowsPlaying} [${(panels.rowCodes || []).join(',')}] `
+      + `dom=${panels.domRows} first=${JSON.stringify(panels.firstRow)} label="${panels.countLabel}" timeOk=${panels.timeLooksRight}`
+  });
+
+  result.steps.push({
+    name: 'rows clear when the sound ends',
+    pass: panels.rowsAfterStop === 0 && panels.domRowsAfterStop === 0
+      && panels.hintBack && panels.countAfterStop === 'idle',
+    detail: `rows=${panels.rowsAfterStop} dom=${panels.domRowsAfterStop} hint=${panels.hintBack} label="${panels.countAfterStop}"`
+  });
+
+  result.steps.push({
+    name: 'analyser feeds the equalizer',
+    pass: panels.spectrumBands === 16 && panels.spectrumNonZero >= 3 && panels.spectrumPeak > 0
+      && panels.eqLitPixels > 20,
+    detail: `${panels.spectrumBands} bands, ${panels.spectrumNonZero} non-zero, peak=${panels.spectrumPeak.toFixed(2)}, `
+      + `painted pixels on a scan line across a ${panels.eqWidth}px bank = ${panels.eqLitPixels}`
+  });
+
+  // Phase 2: a corrupt profile on disk
   // Phase 2: a corrupt profile on disk must degrade gracefully, never crash.
   // The renderer knows which file is active (the Save As check moved it), so ask.
   let corruptCheck = { name: 'corrupt profile tolerated', pass: false, detail: '' };

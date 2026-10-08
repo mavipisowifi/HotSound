@@ -19,6 +19,8 @@ window.HS = window.HS || {};
     constructor() {
       this.ctx = null;
       this.master = null;
+      this.analyser = null;
+      this._freq = null;
       this.cache = new Map(); // filePath -> AudioBuffer
       this.loading = new Map(); // filePath -> Promise<AudioBuffer>
       this.voices = new Set();
@@ -32,7 +34,14 @@ window.HS = window.HS || {};
       this.ctx = new Ctor({ latencyHint: 'interactive' });
       this.master = this.ctx.createGain();
       this.master.gain.value = this.masterVolume;
-      this.master.connect(this.ctx.destination);
+      // The visualiser reads the finished mix, so the faders follow what you hear,
+      // master volume included. Pass-through: no audible effect on the output.
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 512;
+      this.analyser.smoothingTimeConstant = 0.6;
+      this._freq = new Uint8Array(this.analyser.frequencyBinCount);
+      this.master.connect(this.analyser);
+      this.analyser.connect(this.ctx.destination);
       return this.ctx;
     }
 
@@ -124,7 +133,15 @@ window.HS = window.HS || {};
       tail.connect(this.master);
       src.connect(gain);
 
-      const voice = { id: Symbol('voice'), source: src, gain, slot, stop: null };
+      const voice = {
+        id: Symbol('voice'),
+        source: src,
+        gain,
+        slot,
+        startedAt: now,
+        duration: buffer.duration / (slot.rate || 1),
+        stop: null
+      };
       voice.stop = (fadeSeconds = 0.02) => {
         const t = ctx.currentTime;
         gain.gain.cancelScheduledValues(t);
@@ -198,6 +215,44 @@ window.HS = window.HS || {};
 
     activeVoiceCount() {
       return this.voices.size;
+    }
+    /** One entry per sounding voice, for the "playing keys" list. */
+    activeVoices() {
+      const out = [];
+      for (const v of this.voices) {
+        if (!v.slot || !v.slot.code) continue;
+        out.push({
+          code: v.slot.code,
+          startedAt: v.startedAt,
+          duration: v.duration,
+          loop: !!v.source.loop
+        });
+      }
+      return out;
+    }
+    /**
+     * Frequency levels, 0..1 per band, log-spaced so the low end is not squashed into
+     * one fader. Returns `bands` numbers; all zero before the context exists.
+     */
+    spectrum(bands = 16) {
+      const levels = new Array(bands).fill(0);
+      if (!this.analyser || !this._freq) return levels;
+      this.analyser.getByteFrequencyData(this._freq);
+      const bins = this._freq.length;
+      const nyquist = (this.ctx ? this.ctx.sampleRate : 48000) / 2;
+      const lowHz = 45;
+      const highHz = Math.min(16000, nyquist);
+      for (let b = 0; b < bands; b++) {
+        const f0 = lowHz * Math.pow(highHz / lowHz, b / bands);
+        const f1 = lowHz * Math.pow(highHz / lowHz, (b + 1) / bands);
+        const from = Math.floor((f0 / nyquist) * bins);
+        if (from >= bins) continue;
+        const to = Math.min(bins, Math.max(from + 1, Math.ceil((f1 / nyquist) * bins)));
+        let peak = 0;
+        for (let i = from; i < to; i++) if (this._freq[i] > peak) peak = this._freq[i];
+        levels[b] = peak / 255;
+      }
+      return levels;
     }
   }
 

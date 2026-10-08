@@ -17,6 +17,7 @@
  */
 (function (HS) {
   const { layout, AudioEngine, WaveformView } = HS;
+  const { createEqBank, createPlayingList } = HS.Panels;
 
   const app = window.hotsound || null;
 
@@ -132,6 +133,8 @@
   const els = {};
   const keyNodes = new Map();
   let wave = null;
+  let eq = null;
+  let playing = null;
 
   function q(id) {
     return document.getElementById(id);
@@ -141,7 +144,7 @@
     for (const id of [
       'board', 'legend', 'master-volume', 'master-volume-out', 'btn-load-folder',
       'btn-open-profile', 'btn-save-profile', 'btn-stop-all', 'np-key', 'np-sound', 'np-sub',
-      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github',
+      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'eq-canvas', 'playing-list', 'playing-count',
       'drop-veil'
     ]) {
       els[id] = q(id);
@@ -237,6 +240,7 @@
     board.style.setProperty('--fs-title', `${Math.max(9, Math.round(unit * 0.19))}px`);
     board.style.height = `${unit * layout.LAYOUT.length}px`;
     if (wave) wave.invalidate();
+    if (eq) eq.redraw();
   }
 
   function refreshKey(code) {
@@ -1011,6 +1015,7 @@
         const node = keyNodes.get(code);
         if (node && !isMuted(code)) node.classList.toggle('sounding', codes.has(code));
       }
+      if (playing) playing.sync();
     };
 
     if (app && app.onGlobalTrigger) {
@@ -1072,6 +1077,29 @@
       onChange: renderNowPlaying,
       fontFamily: UI_FONT
     });
+
+    // Equalizer faders above the board, and the list of keys playing now.
+    eq = createEqBank({ canvas: els['eq-canvas'], engine });
+    playing = createPlayingList({
+      list: els['playing-list'],
+      count: els['playing-count'],
+      engine,
+      formatTime,
+      describe: (code) => {
+        const key = layout.BY_CODE.get(code);
+        const slot = state.slots[code];
+        const zone = layout.ZONES[(key && key.zone) || 'green'] || layout.ZONES.green;
+        return {
+          label: layout.hotkeyLabel(code),
+          title: slotTitle(slot) || (slot && slot.name) || '',
+          fill: zone.fill,
+          loop: !!(slot && slot.loop)
+        };
+      }
+    });
+
+    // Paint the idle state now; sync() otherwise only runs on a voice change.
+    playing.sync();
     buildBoard();
     fitBoard();
     wireUi();
@@ -1231,6 +1259,38 @@
       fractionalFontSizes: [...new Set(fontSizes.filter((f) => f % 1 !== 0))],
       fractionalRectCount: fractionalRects.length,
       veilHidden: els['drop-veil'].hidden
+    };
+
+    // The two playback visualisations: an equalizer bank above the board and a list
+    // of the keys currently sounding beside it.
+    const eqCanvas = els['eq-canvas'];
+    const playingPanel = document.querySelector('.playing-panel');
+    report.visuals = {
+      eqPresent: !!eqCanvas && !!eq,
+      eqBands: eq ? eq.bands : 0,
+      eqLevels: eq ? eq.levels().length : 0,
+      eqCss: eqCanvas ? `${Math.round(eqCanvas.getBoundingClientRect().width)}x${Math.round(eqCanvas.getBoundingClientRect().height)}` : '0x0',
+      eqBacking: eqCanvas ? `${eqCanvas.width}x${eqCanvas.height}` : '0x0',
+      playingPanelPresent: !!playingPanel,
+      playingRowsIdle: els['playing-list'].querySelectorAll('.playing-row').length,
+      playingHintIdle: !!els['playing-list'].querySelector('.playing-empty'),
+      playingCountIdle: els['playing-count'].textContent
+    };
+
+    // Placement is part of the requirement: the fader bank sits above the board and
+    // the playing list is beside it, not below.
+    const boardPanel = document.querySelector('.board-panel');
+    const eqBankEl = document.querySelector('.eq-bank');
+    const boardEl = document.querySelector('.board');
+    const boardBox = boardPanel.getBoundingClientRect();
+    const playingBox = playingPanel.getBoundingClientRect();
+    report.placement = {
+      eqInsideBoardPanel: !!(eqBankEl && boardPanel.contains(eqBankEl)),
+      eqAboveBoard: !!(eqBankEl && boardEl) && eqBankEl.getBoundingClientRect().bottom <= boardEl.getBoundingClientRect().top + 1,
+      playingBesideBoard: playingBox.left >= boardBox.right - 1,
+      playingSameRow: Math.abs(playingBox.top - boardBox.top) <= 1,
+      boardWidth: Math.round(boardBox.width),
+      playingWidth: Math.round(playingBox.width)
     };
 
     // Removed divisions must be gone from the DOM entirely.
@@ -1435,6 +1495,17 @@
     if (!report.developer.url) report.errors.push('developer link is empty');
     if (!report.developer.nameShown) report.errors.push('developer credit is not visible in the status bar');
     if (!report.developer.linkEnabled) report.errors.push('developer link is not clickable');
+    if (!report.placement.eqInsideBoardPanel) report.errors.push('fader bank is not inside the board panel');
+    if (!report.placement.eqAboveBoard) report.errors.push('fader bank is not above the keyboard');
+    if (!report.placement.playingBesideBoard) report.errors.push('playing list is not beside the keyboard');
+    if (!report.placement.playingSameRow) report.errors.push('playing list is on a different row from the keyboard');
+    if (!report.visuals.eqPresent) report.errors.push('equalizer bank missing');
+    if (report.visuals.eqBands < 8) report.errors.push('equalizer has too few bands');
+    if (!/^[1-9]/.test(report.visuals.eqCss)) report.errors.push('equalizer canvas has no size');
+    if (!/^[1-9]/.test(report.visuals.eqBacking)) report.errors.push('equalizer canvas has no backing store');
+    if (!report.visuals.playingPanelPresent) report.errors.push('playing-now panel missing');
+    if (report.visuals.playingRowsIdle !== 0) report.errors.push('playing list is not empty at rest');
+    if (!report.visuals.playingHintIdle) report.errors.push('playing list shows no idle hint');
     if (report.picker.shellDialogBridges.length) {
       report.errors.push(`bridge to a shell open dialog is exposed: ${report.picker.shellDialogBridges.join(', ')}`);
     }
@@ -1511,6 +1582,8 @@
     engine,
     layout,
     getWave: () => wave,
+    getEq: () => eq,
+    getPlaying: () => playing,
     triggerSlot,
     assignPaths,
     removeFromSlot,

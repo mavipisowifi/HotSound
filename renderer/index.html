@@ -46,6 +46,9 @@
             <h2>Keyboard slots</h2>
             <div class="legend" id="legend"></div>
           </div>
+          <div class="eq-bank" id="eq-bank">
+            <canvas id="eq-canvas" class="eq-canvas" aria-hidden="true"></canvas>
+          </div>
           <div class="board-scroll">
             <div class="board" id="board" role="group" aria-label="Keyboard slot map"></div>
           </div>
@@ -54,6 +57,15 @@
             Right-click to remove the music &middot; Drop audio files onto keys &middot;
             Shift+click toggles loop
           </p>
+        </section>
+
+        <section class="playing-panel" aria-label="Keys playing now">
+          <div class="panel-head">
+            <h2>Playing now</h2>
+            <span class="playing-count" id="playing-count">idle</span>
+          </div>
+          <div class="playing-list" id="playing-list"></div>
+          <p class="hint small">Each key you press appears here while its sound is playing, and goes when it ends.</p>
         </section>
 
         <section class="wave-panel" aria-label="Sound wave preview">
@@ -92,6 +104,7 @@
     <script src="layout.js"></script>
     <script src="audio.js"></script>
     <script src="waveform.js"></script>
+    <script src="panels.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

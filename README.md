@@ -22,6 +22,13 @@ Shift  Z X C V B N M , . /   Shift            Up
 Ctrl Win Alt   Space   Alt Win Menu Ctrl     Lft Dn Rgt
 ```
 
+Above the board is a bank of **equalizer faders**: eighteen log-spaced bands reading
+the finished mix, with a fast attack and a slow release so they settle like a channel
+strip rather than flickering. Beside the board is **Playing now**, which lists the keys
+sounding at this moment — key, sound name, elapsed / total time, and how far through the
+sound is — each row tinted with its key's own colour. Rows appear when a key sounds and
+remove themselves when it stops.
+
 Some keys are printed on the board but are not slots — see
 [Muted keys](#muted-keys--on-the-board-but-not-slots).
 
@@ -132,6 +139,11 @@ playing it. The readout names the key and the sample and shows elapsed / total t
 
 The sweep is driven by the `AudioContext` clock rather than by frame deltas, so it stays
 in step with what you hear even if frames are late.
+
+The equalizer faders read the same signal through an `AnalyserNode` placed after the master
+gain, so they follow the volume you have set; it is a pass-through node, so the
+visualisation cannot alter the output. When the mix is silent and the faders have settled,
+the bank stops repainting until something moves again.
 
 ### Loading a folder
 
@@ -311,6 +323,7 @@ renderer/
   layout.js            The keyboard map: slot keys, muted keys, colour zones
   audio.js             Web Audio engine: decode cache, polyphony, per-voice gain
   waveform.js          Peak envelope + canvas preview with a playhead
+  panels.js            Equalizer faders + the "playing now" list
   app.js               State, board DOM, hotkey capture, click/right-click, store
   fonts.css            GENERATED @font-face rules (the only font declarations)
   fonts/               GENERATED copies of the faces, so the renderer is self-contained
@@ -350,7 +363,13 @@ label font size may be fractional. It checks the branding and typography (logo d
 sized, all eight font faces loaded with `Google Sans` the only family named anywhere), the
 developer credit, the profile controls, the picker configuration, that the removed Music
 Spinner and Slot inspector panels are not in the DOM, that muted keys refuse assignment and
-playback, and that the waveform canvas has a real backing store.
+playback, that the waveform canvas has a real backing store, and that the equalizer bank
+sits above the board and the playing list beside it.
+
+`e2e` covers the playback visualisations too: that a sounding key appears in the Playing
+now list with its label, sound name, elapsed / total time and progress, that the row removes
+itself when the sound ends, that the list returns to idle, that the analyser reports a real
+spectrum while audio plays, and that the faders are painted rather than merely fed.
 
 `e2e` writes WAV files to a temp dir and drives the real IPC and audio graph: decode,
 polyphony, natural voice release, loop sustain and stop, the missing-file error path, that
