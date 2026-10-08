@@ -34,6 +34,7 @@
           <button id="btn-save-profile" class="btn" type="button" title="Save the profile anywhere on disk">
             Save profile&hellip;
           </button>
+          <button id="btn-settings" class="btn" type="button" title="Settings">Settings</button>
           <button id="btn-stop-all" class="btn danger" type="button" title="Stop every playing sound">
             Stop all
           </button>
@@ -98,6 +99,28 @@
         <span id="status-keys" class="keys-badge" title="Slot key capture is active">keys: on</span>
       </footer>
     </div>
+
+    <dialog id="settings-dialog" class="settings-dialog">
+      <form method="dialog" class="settings-form">
+        <h2>Settings</h2>
+
+        <label class="field">
+          <span>Fade out when a sound is stopped <output id="set-fade-out">150 ms</output></span>
+          <input id="set-fade" type="range" min="0" max="2000" step="10" value="150" />
+        </label>
+        <p class="hint small">Applies whenever a sound is stopped: pressing a key again, or Stop all. 0 ms cuts it instantly, which can click on a loud sample.</p>
+
+        <label class="field checkbox">
+          <input id="set-toggle" type="checkbox" checked />
+          <span>Press a key again to stop its sound</span>
+        </label>
+        <p class="hint small">On, a key toggles: press once to play, again to stop. Off, every press starts another copy, so rapid hits overlap (useful for drums).</p>
+
+        <div class="settings-actions">
+          <button class="btn primary" type="submit" value="close">Done</button>
+        </div>
+      </form>
+    </dialog>
 
     <div class="drop-veil" id="drop-veil" hidden><span>Drop samples to assign</span></div>
 

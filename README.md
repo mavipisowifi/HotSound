@@ -94,12 +94,12 @@ runs the installer silently on purpose.
 | --- | --- |
 | **Click an empty key** | Add music to it (file picker) |
 | **Click a key with music** | Play it |
+| **Click a key again while it plays** | Stop it, with the configured fade |
 | **Right-click a key with music** | Remove the music from that key |
-| **Click a looping key** | Stop it |
 | **Shift+click** | Toggle loop on that key |
 | Drop audio files onto a key | Add music, spilling onto following keys |
 | Press a key | Play its slot |
-| Hold a looping key | Sustains while held, stops on release |
+| Press the same key again | Stop that sound |
 
 Replacing a key's music is right-click (remove) then click (add).
 
@@ -154,9 +154,11 @@ decodes on first use and is then cached. See
 
 ### Playback
 
-Polyphonic per slot: retriggering a hit does not cut the tail of the previous one. The
-graph is `source → slot gain → optional panner → master → output`. Keys light up while
-one of their voices is sounding.
+The graph is `source → slot gain → optional panner → master → analyser → output`, with a
+voice per trigger, so with press-again-to-stop off every hit is polyphonic and retriggering
+does not cut the tail of the previous one. Keys light up while one of their voices is
+sounding, and taking music off a key or stopping it fades out over the configured time
+rather than cutting.
 
 ### Keyboard capture
 
@@ -170,6 +172,23 @@ keyboard back without closing HotSound.
 Slots are local by default. `Ctrl+Alt+X` is always registered as a panic key that fades
 out every voice. `Ctrl+Escape` does the same from inside the app, and **Stop all** does it
 from the toolbar.
+
+---
+
+## Settings
+
+**Settings** in the toolbar opens a small panel with two options. Both are stored in the
+profile, so they survive a restart and travel with it when you save it somewhere else.
+
+**Fade out when a sound is stopped** — how long a sound takes to fade when it is stopped,
+default 150 ms, up to 2 s. It applies wherever a sound is stopped: pressing a key again,
+**Stop all**, or the panic shortcuts. A fade of 0 ms cuts instantly, which can click on a
+loud sample — that is the whole reason the fade exists.
+
+**Press a key again to stop its sound** — on, every key behaves as a toggle: press once to
+play, press again to stop. Off, each press starts another copy of the sample on top of the
+last, so rapid hits overlap and ring together, which is what drum rolls and fast hi-hat
+patterns want. It is on by default.
 
 ---
 
@@ -366,7 +385,10 @@ Spinner and Slot inspector panels are not in the DOM, that muted keys refuse ass
 playback, that the waveform canvas has a real backing store, and that the equalizer bank
 sits above the board and the playing list beside it.
 
-`e2e` covers the playback visualisations too: that a sounding key appears in the Playing
+`e2e` also covers the playing system itself: that pressing a key again stops it, that the
+configured fade is really a fade (still sounding part way through it, silent after), that
+turning the toggle off restores polyphonic retriggering, and that the settings survive a
+profile round-trip. It covers the playback visualisations too: that a sounding key appears in the Playing
 now list with its label, sound name, elapsed / total time and progress, that the row removes
 itself when the sound ends, that the list returns to idle, that the analyser reports a real
 spectrum while audio plays, and that the faders are painted rather than merely fed.

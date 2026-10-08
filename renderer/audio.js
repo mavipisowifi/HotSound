@@ -25,6 +25,10 @@ window.HS = window.HS || {};
       this.loading = new Map(); // filePath -> Promise<AudioBuffer>
       this.voices = new Set();
       this.masterVolume = 0.9;
+      // How long a sound takes to fade out when it is stopped, in seconds. The app
+      // sets this from the settings menu; it is the difference between a cut and a
+      // click on a loud sample.
+      this.defaultFade = 0.15;
       this.onVoiceChange = null;
     }
 
@@ -180,7 +184,7 @@ window.HS = window.HS || {};
     }
 
     /** Fade out every voice (Stop all / panic). */
-    stopAll(fadeSeconds = 0.03) {
+    stopAll(fadeSeconds = this.defaultFade) {
       for (const voice of [...this.voices]) {
         try {
           voice.stop(fadeSeconds);
@@ -192,12 +196,12 @@ window.HS = window.HS || {};
     }
 
     /** Voices for one slot code, used by the "stop slot" affordance. */
-    stopSlot(code) {
+    stopSlot(code, fadeSeconds = this.defaultFade) {
       let n = 0;
       for (const voice of [...this.voices]) {
         if (voice.slot && voice.slot.code === code) {
           try {
-            voice.stop(0.02);
+            voice.stop(fadeSeconds);
             n++;
           } catch {
             /* ignore */

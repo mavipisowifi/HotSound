@@ -77,11 +77,43 @@ async function run(win) {
       const during = HS.app.engine.activeVoiceCount();
       step('decode+play', played && during >= 1, 'triggered=' + played + ' voices=' + during);
 
-      // 2. polyphony: retrigger while the first is still ringing
+      // 2. pressing the same key again stops it, which is the default behaviour
+      await sleep(60);
+      const beforeToggle = HS.app.engine.voiceCountFor('KeyA');
       await HS.app.triggerSlot('KeyA');
       await sleep(40);
-      const poly = HS.app.engine.activeVoiceCount();
-      step('polyphony', poly >= 2, 'voices=' + poly);
+      const duringFade = HS.app.engine.voiceCountFor('KeyA');
+      await sleep(400);
+      const afterToggle = HS.app.engine.voiceCountFor('KeyA');
+      step('press again stops the sound', beforeToggle === 1 && afterToggle === 0,
+           'before=' + beforeToggle + ' duringFade=' + duringFade + ' after=' + afterToggle);
+
+      // 3. the fade has to behave like a fade: still sounding shortly after the stop
+      //    is asked for, silent once the configured time has passed
+      HS.app.state.settings.fadeMs = 300;
+      HS.app.engine.defaultFade = 0.3;
+      await HS.app.triggerSlot('KeyA');
+      await sleep(60);
+      await HS.app.triggerSlot('KeyA');
+      await sleep(120);
+      const midFade = HS.app.engine.voiceCountFor('KeyA');
+      await sleep(340);
+      const fadedOut = HS.app.engine.voiceCountFor('KeyA');
+      step('fade time is honoured', midFade === 1 && fadedOut === 0,
+           'sounding 120ms into a 300ms fade=' + midFade + ', silent after 460ms=' + fadedOut);
+      HS.app.state.settings.fadeMs = 150;
+      HS.app.engine.defaultFade = 0.15;
+
+      // 4. with the toggle off, presses stack up instead (which drums want)
+      HS.app.state.settings.pressAgainToStop = false;
+      await HS.app.triggerSlot('KeyA');
+      await sleep(40);
+      await HS.app.triggerSlot('KeyA');
+      await sleep(40);
+      const poly = HS.app.engine.voiceCountFor('KeyA');
+      step('polyphony when the toggle is off', poly >= 2, 'voices=' + poly);
+      HS.app.state.settings.pressAgainToStop = true;
+      HS.app.engine.stopAll(0.02);
       await sleep(600);
       const after = HS.app.engine.activeVoiceCount();
       step('natural voice release', after === 0, 'voices=' + after);
@@ -92,7 +124,7 @@ async function run(win) {
       await sleep(700);
       const looping = HS.app.engine.voiceCountFor('KeyB');
       HS.app.engine.stopSlot('KeyB');
-      await sleep(120);
+      await sleep(400);   // longer than the default 150ms fade
       const stopped = HS.app.engine.voiceCountFor('KeyB');
       step('loop sustains', looping >= 1, 'voices=' + looping);
       step('loop stops', stopped === 0, 'voices=' + stopped);
@@ -179,6 +211,7 @@ async function run(win) {
       // 9. profile round-trip through the real filesystem
       const profile = {
         version: 2, app: 'HotSound', masterVolume: 0.42,
+        settings: { fadeMs: 640, pressAgainToStop: false },
         slots: { KeyA: HS.app.state.slots.KeyA, KeyB: HS.app.state.slots.KeyB }
       };
       await window.hotsound.saveProfile(profile);
@@ -186,6 +219,12 @@ async function run(win) {
       step('profile round-trip',
         !!back && back.masterVolume === 0.42 && back.slots && back.slots.KeyB && /snare/.test(back.slots.KeyB.path),
         'master=' + (back && back.masterVolume) + ' slots=' + (back && back.slots ? Object.keys(back.slots).length : 0));
+
+      // Settings travel with the profile, so a fade set once survives a restart.
+      const settingsBack = await window.hotsound.loadProfile().then((r) => r.profile && r.profile.settings);
+      step('settings persist with the profile',
+        !!settingsBack && settingsBack.fadeMs === 640 && settingsBack.pressAgainToStop === false,
+        JSON.stringify(settingsBack));
 
       // 10. Save As: writes to a chosen path and becomes the active profile
       const saveTarget = ${JSON.stringify(path.join(tmp, 'chosen', 'my-hotsound-profile.json'))};

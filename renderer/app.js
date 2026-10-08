@@ -46,7 +46,8 @@
 
   const state = {
     slots: {}, // code -> slot assignment (slot keys only)
-    masterVolume: 0.9
+    masterVolume: 0.9,
+    settings: { fadeMs: 150, pressAgainToStop: true }
   };
 
   const engine = new AudioEngine();
@@ -144,7 +145,8 @@
     for (const id of [
       'board', 'legend', 'master-volume', 'master-volume-out', 'btn-load-folder',
       'btn-open-profile', 'btn-save-profile', 'btn-stop-all', 'np-key', 'np-sound', 'np-sub',
-      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'eq-canvas', 'playing-list', 'playing-count',
+      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'eq-canvas', 'playing-list', 'playing-count', 'btn-settings',
+      'settings-dialog', 'set-fade', 'set-fade-out', 'set-toggle',
       'drop-veil'
     ]) {
       els[id] = q(id);
@@ -311,6 +313,11 @@
    * Playback
    * ---------------------------------------------------------------- */
 
+  /** Push the settings that the audio engine needs. */
+  function applyAudioSettings() {
+    engine.defaultFade = Math.max(0, state.settings.fadeMs) / 1000;
+  }
+
   async function triggerSlot(code, { loop } = {}) {
     if (isMuted(code)) return false;
     const slot = slotFor(code);
@@ -318,6 +325,16 @@
       flashKey(code);
       return false;
     }
+
+    // Press once to play, press again to stop. Off, every press starts another copy
+    // so rapid hits overlap, which is what drum rolls want.
+    if (state.settings.pressAgainToStop && engine.voiceCountFor(code) > 0) {
+      flashKey(code);
+      engine.stopSlot(code);
+      setStatus(`Stopped ${layout.hotkeyLabel(code)}`);
+      return true;
+    }
+
     flashKey(code);
     try {
       await engine.trigger(slot, loop != null ? { loop } : {});
@@ -499,8 +516,11 @@
   }
 
   function onKeyUp(ev) {
-    // A looping slot sustains while its key is held, like a hardware sampler pad.
+    // With press-again-to-stop on, releasing a key must not stop the sound, or the
+    // second press would have nothing to stop. With it off, a looping key sustains
+    // while held, like a hardware sampler pad.
     if (isMuted(ev.code)) return;
+    if (state.settings.pressAgainToStop) return;
     const slot = state.slots[ev.code];
     if (slot && slot.loop) engine.stopSlot(ev.code);
   }
@@ -525,13 +545,7 @@
       assignFromPicker(code);
       return;
     }
-
-    // A looping slot toggles, so a loop started with the mouse stops with the mouse.
-    if (slot.loop && engine.voiceCountFor(code)) {
-      engine.stopSlot(code);
-      setStatus(`Stopped ${layout.hotkeyLabel(code)}`);
-      return;
-    }
+    // Filled slots play; pressing or clicking again stops (see triggerSlot).
     triggerSlot(code);
   }
 
@@ -681,6 +695,7 @@
       app: 'HotSound',
       savedAt: new Date().toISOString(),
       masterVolume: state.masterVolume,
+      settings: { ...state.settings },
       slots: state.slots
     };
   }
@@ -690,6 +705,20 @@
   function setActiveProfile(pathname) {
     activeProfilePath = pathname || '';
     renderProfileBadge();
+  }
+
+  /** Mirror settings state into the dialog's controls. */
+  function renderSettingsControls() {
+    els['set-fade'].value = String(state.settings.fadeMs);
+    els['set-fade-out'].textContent = `${state.settings.fadeMs} ms`;
+    els['set-toggle'].checked = !!state.settings.pressAgainToStop;
+  }
+
+  function openSettings() {
+    renderSettingsControls();
+    const dlg = els['settings-dialog'];
+    if (typeof dlg.showModal === 'function') dlg.showModal();
+    else dlg.setAttribute('open', '');
   }
 
   function renderProfileBadge() {
@@ -725,6 +754,16 @@
           error: ''
         });
       }
+    }
+    if (profile.settings && typeof profile.settings === 'object') {
+      if (profile.settings.fadeMs != null) {
+        state.settings.fadeMs = Math.min(2000, Math.max(0, Number(profile.settings.fadeMs) || 0));
+      }
+      if (profile.settings.pressAgainToStop != null) {
+        state.settings.pressAgainToStop = !!profile.settings.pressAgainToStop;
+      }
+      applyAudioSettings();
+      renderSettingsControls();
     }
     if (profile.masterVolume != null) {
       state.masterVolume = profile.masterVolume;
@@ -964,6 +1003,28 @@
     els['btn-open-profile'].addEventListener('click', () => openProfile());
     els['btn-load-folder'].addEventListener('click', () => loadFolder());
 
+    els['btn-settings'].addEventListener('click', openSettings);
+
+    els['set-fade'].addEventListener('input', (ev) => {
+      state.settings.fadeMs = Number(ev.target.value);
+      els['set-fade-out'].textContent = `${state.settings.fadeMs} ms`;
+      applyAudioSettings();
+    });
+
+    els['set-toggle'].addEventListener('change', (ev) => {
+      state.settings.pressAgainToStop = ev.target.checked;
+      setStatus(
+        state.settings.pressAgainToStop
+          ? 'Press a key again to stop its sound'
+          : 'Every press starts another copy of the sound'
+      );
+    });
+
+    // Clicking the dimmed area outside the panel closes it; Escape is built in.
+    els['settings-dialog'].addEventListener('click', (ev) => {
+      if (ev.target === els['settings-dialog']) els['settings-dialog'].close();
+    });
+
     els['dev-github'].addEventListener('click', async () => {
       if (!developerUrl) return;
       const res = await app.openExternal(developerUrl);
@@ -1104,6 +1165,8 @@
     fitBoard();
     wireUi();
 
+    applyAudioSettings();
+    renderSettingsControls();
     await renderDeveloper();
     await loadProfile();
     refreshAll();
@@ -1291,6 +1354,20 @@
       playingSameRow: Math.abs(playingBox.top - boardBox.top) <= 1,
       boardWidth: Math.round(boardBox.width),
       playingWidth: Math.round(playingBox.width)
+    };
+
+    // Settings: the dialog must exist and stay out of the way at rest, and the fade
+    // it sets must actually reach the audio engine.
+    const settingsDialog = q('settings-dialog');
+    report.settings = {
+      dialogPresent: !!settingsDialog,
+      dialogClosedAtRest: !!(settingsDialog && !settingsDialog.open),
+      fadeSlider: !!q('set-fade'),
+      fadeLabel: q('set-fade-out') ? q('set-fade-out').textContent : '',
+      toggleControl: !!q('set-toggle'),
+      fadeMs: state.settings.fadeMs,
+      engineFadeSeconds: engine.defaultFade,
+      pressAgainToStop: state.settings.pressAgainToStop
     };
 
     // Removed divisions must be gone from the DOM entirely.
@@ -1499,6 +1576,13 @@
     if (!report.placement.eqAboveBoard) report.errors.push('fader bank is not above the keyboard');
     if (!report.placement.playingBesideBoard) report.errors.push('playing list is not beside the keyboard');
     if (!report.placement.playingSameRow) report.errors.push('playing list is on a different row from the keyboard');
+    if (!report.settings.dialogPresent) report.errors.push('settings dialog missing');
+    if (!report.settings.dialogClosedAtRest) report.errors.push('settings dialog is open at rest');
+    if (!report.settings.fadeSlider || !report.settings.toggleControl) report.errors.push('settings controls missing');
+    if (Math.abs(report.settings.engineFadeSeconds - report.settings.fadeMs / 1000) > 0.0005) {
+      report.errors.push(`engine fade ${report.settings.engineFadeSeconds}s does not match the setting ${report.settings.fadeMs}ms`);
+    }
+    if (report.settings.pressAgainToStop !== true) report.errors.push('press-again-to-stop is not the default');
     if (!report.visuals.eqPresent) report.errors.push('equalizer bank missing');
     if (report.visuals.eqBands < 8) report.errors.push('equalizer has too few bands');
     if (!/^[1-9]/.test(report.visuals.eqCss)) report.errors.push('equalizer canvas has no size');
@@ -1583,6 +1667,8 @@
     layout,
     getWave: () => wave,
     getEq: () => eq,
+    openSettings,
+    renderSettingsControls,
     getPlaying: () => playing,
     triggerSlot,
     assignPaths,
