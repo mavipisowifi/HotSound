@@ -9,7 +9,8 @@ Built with Electron. No native modules, no bundler, no runtime dependencies beyo
 Electron itself.
 
 **Developer:** Marvin Bangcailan — [@mavipisowifi](https://github.com/mavipisowifi)  
-**Repository:** [mavipisowifi/HotSound](https://github.com/mavipisowifi/HotSound)
+**Repository:** [mavipisowifi/HotSound](https://github.com/mavipisowifi/HotSound)  
+**New here?** [What HotSound does, and who it is for](ABOUT.md)
 
 The board, top to bottom:
 
