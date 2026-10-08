@@ -633,12 +633,16 @@ function stopAllSounds(fade) {
 
     menu.innerHTML =
       `<div class="menu-head">${escapeHtml(label)}</div>` +
-      `<button type="button" class="menu-item danger" data-action="delete"${hasMusic ? '' : ' disabled'}>` +
-      `<span class="check"></span>Delete` +
-      `<span class="menu-note">${hasMusic ? 'remove its sound' : 'nothing loaded'}</span></button>` +
+      `<button type="button" class="menu-item" data-action="replace">` +
+      `<span class="check"></span>Replace` +
+      `<span class="menu-note">${hasMusic ? 'choose a new sound' : 'choose a sound'}</span></button>` +
       `<button type="button" class="menu-item" data-action="twice">` +
       `<span class="check">${twice ? '✓' : ''}</span>Set twice to stop` +
-      `<span class="menu-note">${pinned ? 'just this key' : 'default'}</span></button>`;
+      `<span class="menu-note">${pinned ? 'just this key' : 'default'}</span></button>` +
+      `<div class="menu-sep"></div>` +
+      `<button type="button" class="menu-item danger" data-action="delete"${hasMusic ? '' : ' disabled'}>` +
+      `<span class="check"></span>Delete` +
+      `<span class="menu-note">${hasMusic ? 'remove its sound' : 'nothing loaded'}</span></button>`;
 
     menu.hidden = false;
     menuCode = code;
@@ -657,6 +661,7 @@ function stopAllSounds(fade) {
         closeSlotMenu();
         if (!target) return;
         if (action === 'delete') removeFromSlot(target);
+        else if (action === 'replace') assignFromPicker(target);
         else if (action === 'twice') toggleSlotTwiceToStop(target);
       });
     }

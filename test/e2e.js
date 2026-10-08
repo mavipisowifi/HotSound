@@ -12,6 +12,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { app } = require('electron');
+const { execFile } = require('node:child_process');
 
 function writeWav(filePath, { seconds = 0.3, freq = 440, rate = 44100 } = {}) {
   const samples = Math.floor(seconds * rate);
@@ -581,6 +582,50 @@ async function run(win) {
       + `(app-side; device reports ${latency.deviceMs.toFixed(0)} ms, which is the sound card's own delay)`
   });
 
+  /** Close the app's native file picker, the way the Cancel button does. */
+  const dismissPicker = () => {
+    const pids = [process.pid, ...app.getAppMetrics().map((m) => m.pid)];
+    const script = `
+      $ErrorActionPreference = 'SilentlyContinue'
+      Add-Type @"
+        using System; using System.Text; using System.Runtime.InteropServices;
+        public class D {
+          public delegate bool EnumProc(IntPtr h, IntPtr l);
+          [DllImport("user32.dll")] public static extern bool EnumWindows(EnumProc cb, IntPtr p);
+          [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+          [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetClassName(IntPtr h, StringBuilder s, int n);
+          [DllImport("user32.dll")] public static extern bool IsWindowVisible(IntPtr h);
+          [DllImport("user32.dll")] public static extern bool PostMessage(IntPtr h, uint msg, IntPtr w, IntPtr l);
+        }
+"@
+      $targets = @(${pids.join(',')})
+      $hits = 0
+      $cb = [D+EnumProc]{
+        param($h, $l)
+        $wp = 0
+        [void][D]::GetWindowThreadProcessId($h, [ref]$wp)
+        if (($targets -contains [int]$wp) -and [D]::IsWindowVisible($h)) {
+          $c = New-Object System.Text.StringBuilder 256
+          [void][D]::GetClassName($h, $c, 256)
+          if ($c.ToString() -eq '#32770') {
+            [void][D]::PostMessage($h, 0x0010, [IntPtr]::Zero, [IntPtr]::Zero)
+            $script:hits += 1
+          }
+        }
+        return $true
+      }
+      [void][D]::EnumWindows($cb, [IntPtr]::Zero)
+      Write-Output $script:hits
+    `;
+    const file = path.join(os.tmpdir(), 'hotsound-e2e-dismiss.ps1');
+    fs.writeFileSync(file, script, 'utf8');
+    return new Promise((resolve) => {
+      execFile('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file], (err, stdout) => {
+        resolve(String(stdout || '').trim());
+      });
+    });
+  };
+
   // Right-clicking a key opens a menu with two per-key actions: delete its music, or
   // pin whether that one key stops on a second press.
   const slotMenu = await win.webContents.executeJavaScript(
@@ -668,10 +713,12 @@ async function run(win) {
   );
 
   result.steps.push({
-    name: 'right-click opens a two-item slot menu',
+    name: 'right-click opens the slot menu',
     pass: slotMenu.openedOnRightClick === true
-      && slotMenu.items.length === 2
-      && slotMenu.items[0].action === 'delete' && slotMenu.items[1].action === 'twice',
+      && slotMenu.items.length === 3
+      && slotMenu.items[0].action === 'replace'
+      && slotMenu.items[1].action === 'twice'
+      && slotMenu.items[2].action === 'delete',
     detail: `heading="${slotMenu.heading}" items=${JSON.stringify(slotMenu.items)}`
   });
 
@@ -690,6 +737,60 @@ async function run(win) {
       && slotMenu.deleteDisabledWhenEmpty === true,
     detail: `closesAfterChoice=${slotMenu.menuClosedAfterChoice} escape=${slotMenu.escapeCloses} `
       + `deleted=${slotMenu.deleted} deleteDisabledWhenEmpty=${slotMenu.deleteDisabledWhenEmpty}`
+  });
+
+  // Replace opens the same picker as adding a sound does, so the driver has to close the
+  // native dialog before anything else can happen. Cancelling must leave the key exactly
+  // as it was, and must not take the app down - this is the path that used to segfault
+  // when it went through Electron's own open dialog.
+  const replaceOpened = await win.webContents.executeJavaScript(
+    `(async () => {
+       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+       const HS = window.HS;
+       const menu = document.getElementById('context-menu');
+       const node = document.querySelector('.key[data-code="KeyB"]');
+       const before = { path: HS.app.state.slots.KeyB.path, name: HS.app.state.slots.KeyB.name };
+       node.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 90, clientY: 90 }));
+       await sleep(60);
+       menu.querySelector('[data-action="replace"]').click();
+       await sleep(200);
+       return { before, pickerInputs: document.querySelectorAll('input.file-picker').length };
+     })()`,
+    true
+  );
+
+  const dismissed = await dismissPicker();
+  await new Promise((r) => setTimeout(r, 600));
+
+  const replaceAfter = await win.webContents.executeJavaScript(
+    `(async () => {
+       await new Promise((r) => setTimeout(r, 300));
+       const HS = window.HS;
+       return {
+         path: HS.app.state.slots.KeyB.path,
+         name: HS.app.state.slots.KeyB.name,
+         pickerInputs: document.querySelectorAll('input.file-picker').length,
+         voices: HS.app.engine.activeVoiceCount(),
+         status: document.getElementById('status-msg').textContent
+       };
+     })()`,
+    true
+  );
+
+  result.steps.push({
+    name: 'Replace opens the file picker',
+    pass: replaceOpened.pickerInputs === 1
+      && replaceAfter.path === replaceOpened.before.path
+      && replaceAfter.name === replaceOpened.before.name,
+    detail: `picker opened (${replaceOpened.pickerInputs} input), music untouched: `
+      + `"${replaceOpened.before.name}" -> "${replaceAfter.name}"`
+  });
+
+  result.steps.push({
+    name: 'cancelling Replace is safe and leaves no trace',
+    pass: dismissed !== '0' && replaceAfter.pickerInputs === 0
+      && replaceAfter.status === 'Canceled',
+    detail: `dialogs closed=${dismissed} leftoverInputs=${replaceAfter.pickerInputs} status="${replaceAfter.status}"`
   });
 
   // Phase 2: a corrupt profile on disk

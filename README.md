@@ -95,7 +95,7 @@ runs the installer silently on purpose.
 | **Click an empty key** | Add music to it (file picker) |
 | **Click a key with music** | Play it |
 | **Click a key again while it plays** | Stop it, with the configured fade |
-| **Right-click a key** | Slot menu: **Delete** its music, or pin **Set twice to stop** for that key |
+| **Right-click a key** | Slot menu: **Replace** its sound, **Delete** it, or pin **Set twice to stop** for that key |
 | **Shift+click** | Toggle loop on that key |
 | Drop audio files onto a key | Add music, spilling onto following keys |
 | Press a key | Play its slot |
@@ -200,12 +200,13 @@ the global setting. Deleting a key's music clears its pin too.
 
 ### The slot menu
 
-Right-clicking any key opens a small menu headed with that key's name, with two actions:
+Right-clicking any key opens a small menu headed with that key's name, with three actions:
 
 | Item | What it does |
 | --- | --- |
-| **Delete** | Removes the music from that key. Disabled when the key is empty. |
+| **Replace** | Opens the same file picker as adding a sound, and puts the chosen file on that key. Cancelling changes nothing. |
 | **Set twice to stop** | Ticks or unticks the press-again-to-stop behaviour for that key alone. The note on the right says `default` while the key follows the global setting, and `just this key` once it has been pinned. |
+| **Delete** | Removes the music from that key. Disabled when the key is empty. |
 
 Escape, a click anywhere else, or choosing an item closes it. Deleting is deliberately two
 clicks — a menu, then the item — rather than the single right-click it used to be, because
@@ -453,6 +454,8 @@ sits above the board and the playing list beside it.
 that Delete clears the key and disables itself when the key is empty, that a pinned key
 stacks a second press while an unpinned one stops, that pinning the same option again
 returns the key to the global default, and that Escape and a click elsewhere dismiss it.
+Replace is covered too, using the real file picker: the test opens it, closes it the way
+Cancel does, and checks the key still holds the sound it had and that the app is intact.
 
 `e2e` also checks that the output device is opened at boot rather than on the first hit,
 and holds the app's own scheduling to a latency budget. It covers the playing system itself: that pressing a key again stops it, that the
