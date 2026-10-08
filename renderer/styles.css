@@ -657,6 +657,12 @@ input[type="checkbox"] {
   color: var(--mint);
 }
 
+.badge.twice {
+  background: rgba(12, 32, 24, 0.8);
+  color: #d9f2e4;
+  border: 1px solid rgba(187, 234, 204, 0.4);
+}
+
 .badge.global {
   background: rgba(187, 234, 204, 0.85);
   color: #10231a;
@@ -770,6 +776,74 @@ input[type="checkbox"] {
 .legend-item.muted-legend i {
   background: linear-gradient(180deg, #223029, #1a2620);
   border: 1px dashed rgba(187, 234, 204, 0.45);
+}
+
+/* ---------------- slot context menu ---------------- */
+
+.context-menu {
+  position: fixed;
+  z-index: 40;
+  min-width: 208px;
+  padding: 6px;
+  border-radius: 10px;
+  background: #16261e;
+  border: 1px solid var(--line);
+  box-shadow: 0 20px 44px rgba(0, 0, 0, 0.55);
+}
+
+.menu-head {
+  padding: 4px 9px 7px;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 5px;
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  font-size: 12.5px;
+  color: var(--text);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+.menu-item:hover {
+  background: #22392e;
+  color: var(--mint);
+}
+
+.menu-item .check {
+  flex: none;
+  width: 13px;
+  color: var(--mint);
+  font-weight: 700;
+}
+
+.menu-item .menu-note {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--text-faint);
+}
+
+.menu-item.danger:hover {
+  background: #35221f;
+  color: #f0c2ba;
+}
+
+.menu-sep {
+  height: 1px;
+  margin: 5px 2px;
+  background: var(--line-soft);
 }
 
 /* ---------------- settings dialog ---------------- */

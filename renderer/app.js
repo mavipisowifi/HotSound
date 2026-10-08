@@ -92,6 +92,9 @@
         pan: 0,
         loop: false,
         global: false,
+        // null means "follow the global setting"; the slot menu can pin it either way
+        // for this key alone.
+        twiceToStop: null,
         error: ''
       };
     }
@@ -145,7 +148,7 @@
     for (const id of [
       'board', 'legend', 'master-volume', 'master-volume-out', 'btn-load-folder',
       'btn-open-profile', 'btn-save-profile', 'btn-stop-all', 'np-key', 'np-sound', 'np-sub',
-      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'eq-canvas', 'playing-list', 'playing-count', 'btn-settings',
+      'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'context-menu', 'eq-canvas', 'playing-list', 'playing-count', 'btn-settings',
       'settings-dialog', 'set-fade', 'set-fade-out', 'set-toggle', 'latency-readout', 'latency-value',
       'drop-veil'
     ]) {
@@ -264,6 +267,10 @@
     const marks = [];
     if (slot && slot.global) marks.push('<i class="badge global" title="Global hotkey registered">G</i>');
     if (slot && slot.loop && !empty) marks.push('<i class="badge loop" title="Loops">&#8635;</i>');
+    if (slot && slot.twiceToStop != null) {
+      const note = slot.twiceToStop ? 'Stops on a second press' : 'Every press stacks';
+      marks.push(`<i class="badge twice" title="${note} (set for this key)">2&#215;</i>`);
+    }
     if (slot && slot.error) marks.push(`<i class="badge err" title="${escapeHtml(slot.error)}">!</i>`);
     badges.innerHTML = marks.join('');
   }
@@ -329,6 +336,16 @@ function stopAllSounds(fade) {
   return n;
 }
 
+  /**
+   * Does this key stop on a second press? A key with its own setting keeps it; the rest
+   * follow the global one from Settings.
+   */
+  function slotTwiceToStop(code) {
+    const slot = state.slots[code];
+    if (slot && slot.twiceToStop != null) return !!slot.twiceToStop;
+    return !!state.settings.pressAgainToStop;
+  }
+
   /** Draw the preview for a slot if its sample is decoded, and start the sweep. */
   function showWaveFor(code, slot, loop) {
     const buffer = engine.cache.get(slot.path);
@@ -360,7 +377,7 @@ function stopAllSounds(fade) {
 
     // Press once to play, press again to stop. Off, every press starts another copy
     // so rapid hits overlap, which is what drum rolls want.
-    if (state.settings.pressAgainToStop && engine.voiceCountFor(code) > 0) {
+    if (slotTwiceToStop(code) && engine.voiceCountFor(code) > 0) {
       flashKey(code);
       stopSlotSound(code);
       setStatus(`Stopped ${layout.hotkeyLabel(code)}`);
@@ -491,6 +508,7 @@ function stopAllSounds(fade) {
     slot.error = '';
     slot.global = false;
     slot.loop = false;
+    slot.twiceToStop = null;
 
     refreshKey(code);
     if (wasGlobal) syncGlobals();
@@ -511,6 +529,14 @@ function stopAllSounds(fade) {
 
   function onKeyDown(ev) {
     if (ev.repeat) return;
+    // Escape dismisses the slot menu first; Escape is a muted key, so this has to
+    // come before the muted check below.
+    if (ev.key === 'Escape' && els['context-menu'] && !els['context-menu'].hidden) {
+      ev.preventDefault();
+      closeSlotMenu();
+      return;
+    }
+
 
     if (isTypingTarget(ev.target)) return;
 
@@ -550,7 +576,7 @@ function stopAllSounds(fade) {
     // second press would have nothing to stop. With it off, a looping key sustains
     // while held, like a hardware sampler pad.
     if (isMuted(ev.code)) return;
-    if (state.settings.pressAgainToStop) return;
+    if (slotTwiceToStop(ev.code)) return;
     const slot = state.slots[ev.code];
     if (slot && slot.loop) stopSlotSound(ev.code);
   }
@@ -579,15 +605,81 @@ function stopAllSounds(fade) {
     triggerSlot(code);
   }
 
+  /* ---------------------------------------------------------------- *
+   * Slot menu (right-click)
+   *
+   * Two actions, per key: remove the music from this one key, or pin whether this one
+   * key stops on a second press. Deliberately a menu rather than an immediate delete,
+   * because a right-click used to throw the assignment away with no way back.
+   * ---------------------------------------------------------------- */
+
+  let menuCode = null;
+
+  function closeSlotMenu() {
+    const menu = els['context-menu'];
+    if (menu && !menu.hidden) {
+      menu.hidden = true;
+      menuCode = null;
+    }
+  }
+
+  function openSlotMenu(code, x, y) {
+    const menu = els['context-menu'];
+    const slot = peekSlot(code);
+    const label = layout.hotkeyLabel(code);
+    const pinned = slot.twiceToStop != null;
+    const twice = slotTwiceToStop(code) ? true : false;
+    const hasMusic = !isEmpty(slot);
+
+    menu.innerHTML =
+      `<div class="menu-head">${escapeHtml(label)}</div>` +
+      `<button type="button" class="menu-item danger" data-action="delete"${hasMusic ? '' : ' disabled'}>` +
+      `<span class="check"></span>Delete` +
+      `<span class="menu-note">${hasMusic ? 'remove its sound' : 'nothing loaded'}</span></button>` +
+      `<button type="button" class="menu-item" data-action="twice">` +
+      `<span class="check">${twice ? '✓' : ''}</span>Set twice to stop` +
+      `<span class="menu-note">${pinned ? 'just this key' : 'default'}</span></button>`;
+
+    menu.hidden = false;
+    menuCode = code;
+
+    // Keep it inside the window.
+    const box = menu.getBoundingClientRect();
+    const left = Math.max(8, Math.min(x, window.innerWidth - box.width - 8));
+    const top = Math.max(8, Math.min(y, window.innerHeight - box.height - 8));
+    menu.style.left = `${left}px`;
+    menu.style.top = `${top}px`;
+
+    for (const item of menu.querySelectorAll('.menu-item')) {
+      item.addEventListener('click', () => {
+        const action = item.dataset.action;
+        const target = menuCode;
+        closeSlotMenu();
+        if (!target) return;
+        if (action === 'delete') removeFromSlot(target);
+        else if (action === 'twice') toggleSlotTwiceToStop(target);
+      });
+    }
+  }
+
+  function toggleSlotTwiceToStop(code) {
+    const slot = slotFor(code);
+    if (!slot) return;
+    const next = !slotTwiceToStop(code);
+    // Store the choice only while it differs from the global setting, so a key left on
+    // the default follows Settings again later.
+    slot.twiceToStop = next === !!state.settings.pressAgainToStop ? null : next;
+    refreshKey(code);
+    setStatus(
+      `${layout.hotkeyLabel(code)}: ${next ? 'stops on a second press' : 'every press stacks'}` +
+        (slot.twiceToStop == null ? ' (following the global setting)' : '')
+    );
+  }
+
   function onKeyContextMenu(code, ev) {
     ev.preventDefault();
     if (isMuted(code)) return;
-    const slot = state.slots[code];
-    if (isEmpty(slot)) {
-      setStatus(`${layout.hotkeyLabel(code)} has no music to remove`);
-      return;
-    }
-    removeFromSlot(code);
+    openSlotMenu(code, ev.clientX, ev.clientY);
   }
 
   /* ---------------------------------------------------------------- *
@@ -803,6 +895,7 @@ function stopAllSounds(fade) {
           pan: slot.pan == null ? 0 : slot.pan,
           loop: !!slot.loop,
           global: !!slot.global,
+          twiceToStop: slot.twiceToStop == null ? null : !!slot.twiceToStop,
           error: ''
         });
       }
@@ -1098,6 +1191,13 @@ function stopAllSounds(fade) {
       setStatus(keyCaptureEnabled ? 'Slot key capture on' : 'Slot key capture off');
     });
 
+    // A click anywhere outside the menu dismisses it.
+    document.addEventListener('mousedown', (ev) => {
+      const menu = els['context-menu'];
+      if (menu && !menu.hidden && !menu.contains(ev.target)) closeSlotMenu();
+    });
+    window.addEventListener('blur', closeSlotMenu);
+    window.addEventListener('resize', closeSlotMenu);
     document.addEventListener('keydown', onKeyDown);
     document.addEventListener('keyup', onKeyUp);
     window.addEventListener('resize', fitBoard);

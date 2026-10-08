@@ -199,7 +199,7 @@ async function run(win) {
       step('nav block removed, arrows kept', goneFromLayout && goneFromDom && arrowsKept,
            'layoutGone=' + goneFromLayout + ' domGone=' + goneFromDom + ' arrows=' + arrowsKept);
 
-      // 7. click a filled key plays it; right-click removes the music
+      // 7. click a filled key plays it; right-click offers the slot menu
       HS.app.refreshAll();
       const nodeA = document.querySelector('.key[data-code="KeyA"]');
       nodeA.dispatchEvent(new MouseEvent('click', { bubbles: true }));
@@ -207,20 +207,27 @@ async function run(win) {
       const clickPlayed = HS.app.engine.voiceCountFor('KeyA') >= 1;
       step('click a key with music plays it', clickPlayed, 'voices=' + HS.app.engine.voiceCountFor('KeyA'));
 
+      const menuEl = document.getElementById('context-menu');
       const nodeC = document.querySelector('.key[data-code="KeyC"]');
       const hadMusic = !!(HS.app.state.slots.KeyC && HS.app.state.slots.KeyC.path);
       nodeC.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
       await sleep(60);
-      const cleared = !HS.app.state.slots.KeyC || !HS.app.state.slots.KeyC.path;
+      const menuOpened = !menuEl.hidden;
+      const stillThere = !!(HS.app.state.slots.KeyC && HS.app.state.slots.KeyC.path);
       const nodeStillThere = !!document.querySelector('.key[data-code="KeyC"]');
-      step('right-click removes the music', hadMusic && cleared && nodeStillThere,
-           'had=' + hadMusic + ' cleared=' + cleared + ' keyKept=' + nodeStillThere);
+      // Deleting now takes a deliberate second click, so a slip of the right button
+      // cannot throw an assignment away.
+      step('right-click opens the menu and keeps the music', hadMusic && menuOpened && stillThere && nodeStillThere,
+           'had=' + hadMusic + ' menuOpen=' + menuOpened + ' musicKept=' + stillThere);
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
 
-      // right-click on an empty key must be a no-op, not a crash
+      // right-clicking an empty key must not assign anything or fail
       const nodeE = document.querySelector('.key[data-code="KeyE"]');
       nodeE.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
       await sleep(40);
-      step('right-click on empty key is inert', !HS.app.state.slots.KeyE || !HS.app.state.slots.KeyE.path, 'ok');
+      const emptyStayedEmpty = !HS.app.state.slots.KeyE || !HS.app.state.slots.KeyE.path;
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+      step('right-click on an empty key changes nothing', emptyStayedEmpty, 'ok');
 
       // 8. waveform preview follows playback
       const wave = HS.app.getWave();
@@ -572,6 +579,117 @@ async function run(win) {
     pass: latency.count >= 10 && latency.median <= 5 && latency.max <= 25,
     detail: `${latency.count} warm hits: median ${latency.median.toFixed(2)} ms, max ${latency.max.toFixed(2)} ms `
       + `(app-side; device reports ${latency.deviceMs.toFixed(0)} ms, which is the sound card's own delay)`
+  });
+
+  // Right-clicking a key opens a menu with two per-key actions: delete its music, or
+  // pin whether that one key stops on a second press.
+  const slotMenu = await win.webContents.executeJavaScript(
+    `(async () => {
+       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+       const HS = window.HS;
+       const out = {};
+       const node = (code) => document.querySelector('.key[data-code="' + code + '"]');
+       const menu = document.getElementById('context-menu');
+       const items = () => [...menu.querySelectorAll('.menu-item')].map((b) => ({
+         action: b.dataset.action, text: b.textContent.trim(), disabled: b.disabled
+       }));
+
+       // Put music on a key, then right-click it.
+       const slot = HS.app.state.slots.KeyC || { code: 'KeyC' };
+       Object.assign(slot, { code: 'KeyC', path: ${JSON.stringify(files.a)}, name: 'kick.wav', volume: 1, rate: 1, pan: 0, loop: false, global: false, twiceToStop: null, error: '' });
+       HS.app.state.slots.KeyC = slot;
+       HS.app.refreshKey('KeyC');
+
+       out.hiddenAtRest = menu.hidden;
+       node('KeyC').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+       await sleep(60);
+       out.openedOnRightClick = !menu.hidden;
+       out.items = items();
+       out.heading = (menu.querySelector('.menu-head') || {}).textContent;
+
+       // The per-key toggle first: pin this key to "every press stacks".
+       HS.app.state.settings.pressAgainToStop = true;   // global default is twice-to-stop
+       const beforePinned = HS.app.engine ? null : null;
+       menu.querySelector('[data-action="twice"]').click();
+       await sleep(60);
+       out.menuClosedAfterChoice = menu.hidden;
+       out.pinned = HS.app.state.slots.KeyC.twiceToStop;
+
+       // Pressed twice with the key pinned off: the second press stacks a voice instead
+       // of stopping the first.
+       await HS.app.triggerSlot('KeyC');
+       await sleep(50);
+       const stacked = HS.app.engine.voiceCountFor('KeyC');
+       HS.app.engine.stopAll(0.01);
+       await sleep(400);
+
+       // Now re-open and toggle it back: it follows the global (twice to stop) again, and
+       // the second press stops.
+       node('KeyC').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 120, clientY: 130 }));
+       await sleep(60);
+       menu.querySelector('[data-action="twice"]').click();
+       await sleep(60);
+       out.pinnedAfterToggleBack = HS.app.state.slots.KeyC.twiceToStop;
+       await HS.app.triggerSlot('KeyC');
+       await sleep(50);
+       await HS.app.triggerSlot('KeyC');
+       await sleep(400);
+       const afterToggle = HS.app.engine.voiceCountFor('KeyC');
+
+       // Escape closes it.
+       node('KeyC').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+       await sleep(60);
+       const openAgain = !menu.hidden;
+       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+       await sleep(60);
+       out.escapeCloses = openAgain && menu.hidden;
+
+       // Delete, from the menu, clears the key.
+       node('KeyC').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+       await sleep(60);
+       menu.querySelector('[data-action="delete"]').click();
+       await sleep(80);
+       out.deleted = !HS.app.state.slots.KeyC.path;
+       out.badgeGoneAfterDelete = !node('KeyC').querySelector('.badge.twice');
+       out.stackedVoices = stacked;
+
+       // A key with nothing loaded offers no delete.
+       HS.app.state.slots.KeyC.twiceToStop = null;
+       HS.app.refreshKey('KeyC');
+       node('KeyC').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 100, clientY: 100 }));
+       await sleep(60);
+       out.deleteDisabledWhenEmpty = items().find((i) => i.action === 'delete').disabled === true;
+       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+
+       out.afterToggleVoices = afterToggle;
+       return out;
+     })()`,
+    true
+  );
+
+  result.steps.push({
+    name: 'right-click opens a two-item slot menu',
+    pass: slotMenu.openedOnRightClick === true
+      && slotMenu.items.length === 2
+      && slotMenu.items[0].action === 'delete' && slotMenu.items[1].action === 'twice',
+    detail: `heading="${slotMenu.heading}" items=${JSON.stringify(slotMenu.items)}`
+  });
+
+  result.steps.push({
+    name: 'per-key twice-to-stop is honoured',
+    pass: slotMenu.pinned === false && slotMenu.stackedVoices === 1
+      && slotMenu.pinnedAfterToggleBack === null && slotMenu.afterToggleVoices === 0,
+    detail: `pinned=${slotMenu.pinned} (same key pressed twice -> ${slotMenu.stackedVoices} voice, i.e. it stacked); `
+      + `toggled back=${slotMenu.pinnedAfterToggleBack} (follows global) -> ${slotMenu.afterToggleVoices} voices left`
+  });
+
+  result.steps.push({
+    name: 'menu dismissal and delete',
+    pass: slotMenu.menuClosedAfterChoice === true && slotMenu.escapeCloses === true
+      && slotMenu.deleted === true && slotMenu.badgeGoneAfterDelete === true
+      && slotMenu.deleteDisabledWhenEmpty === true,
+    detail: `closesAfterChoice=${slotMenu.menuClosedAfterChoice} escape=${slotMenu.escapeCloses} `
+      + `deleted=${slotMenu.deleted} deleteDisabledWhenEmpty=${slotMenu.deleteDisabledWhenEmpty}`
   });
 
   // Phase 2: a corrupt profile on disk
