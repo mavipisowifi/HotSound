@@ -72,6 +72,13 @@ async function run(win) {
       assign('KeyB', ${JSON.stringify(files.b)}, 'snare.wav');
       assign('KeyC', ${JSON.stringify(files.c)}, 'hat-open.wav');
 
+      // 0. the output device is opened at boot, not on the first hit. Opening it costs
+      //    tens of milliseconds, which otherwise lands on whichever hit comes first.
+      const ctxAtBoot = HS.app.engine.ctx;
+      step('audio device warmed at boot',
+        !!ctxAtBoot && (ctxAtBoot.state === 'running' || ctxAtBoot.state === 'suspended'),
+        ctxAtBoot ? 'state=' + ctxAtBoot.state + ' rate=' + ctxAtBoot.sampleRate : 'no context');
+
       // 1. decode + play a real file
       const played = await HS.app.triggerSlot('KeyA');
       await sleep(80);
@@ -527,6 +534,44 @@ async function run(win) {
       && panels.eqLitPixels > 20,
     detail: `${panels.spectrumBands} bands, ${panels.spectrumNonZero} non-zero, peak=${panels.spectrumPeak.toFixed(2)}, `
       + `painted pixels on a scan line across a ${panels.eqWidth}px bank = ${panels.eqLitPixels}`
+  });
+
+  // The app's own contribution to latency: the synchronous work between the press and
+  // the audio being scheduled. It must stay flat, because this is the part that makes a
+  // drum roll feel sluggish, and the device latency below is a separate matter.
+  const latency = await win.webContents.executeJavaScript(
+    `(async () => {
+       const HS = window.HS;
+       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+       const keys = ['KeyA', 'KeyB'];
+       const sched = [];
+       for (let i = 0; i < 24; i++) {
+         const code = keys[i % keys.length];
+         const slot = HS.app.state.slots[code];
+         if (!slot || !slot.path) continue;
+         const t0 = performance.now();
+         const pending = HS.app.triggerSlot(code);   // audio is scheduled in here
+         sched.push(performance.now() - t0);
+         await pending;
+         HS.app.engine.stopSlot(code, 0.001);
+         await sleep(12);
+       }
+       const sorted = sched.slice().sort((a, b) => a - b);
+       const ctx = HS.app.engine.ctx;
+       return {
+         count: sorted.length,
+         median: sorted[Math.floor(sorted.length / 2)],
+         max: sorted[sorted.length - 1],
+         deviceMs: ctx ? ((ctx.baseLatency || 0) + (ctx.outputLatency || 0)) * 1000 : 0
+       };
+     })()`,
+    true
+  );
+  result.steps.push({
+    name: 'hits are scheduled without UI delay',
+    pass: latency.count >= 10 && latency.median <= 5 && latency.max <= 25,
+    detail: `${latency.count} warm hits: median ${latency.median.toFixed(2)} ms, max ${latency.max.toFixed(2)} ms `
+      + `(app-side; device reports ${latency.deviceMs.toFixed(0)} ms, which is the sound card's own delay)`
   });
 
   // Phase 2: a corrupt profile on disk

@@ -116,6 +116,12 @@
         </label>
         <p class="hint small">On, a key toggles: press once to play, again to stop. Off, every press starts another copy, so rapid hits overlap (useful for drums).</p>
 
+        <div class="latency-readout" id="latency-readout">
+          <span class="dev-label">Audio output</span>
+          <span id="latency-value">measuring&hellip;</span>
+        </div>
+        <p class="hint small">This is what the sound card adds before you hear anything. It is set by the device and its driver, not by the app: headphones over Bluetooth, or audio through a monitor, can add hundreds of milliseconds.</p>
+
         <div class="settings-actions">
           <button class="btn primary" type="submit" value="close">Done</button>
         </div>

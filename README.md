@@ -195,6 +195,48 @@ patterns want. It is on by default.
 
 ---
 
+## Latency
+
+Measured with `tools/measure-latency.js`, so the numbers below are not guesses. On the
+machine this was built on:
+
+| What | Time |
+| --- | --- |
+| App work between the key press and the audio being scheduled | **~1 ms** (median 1.1, max 1.7 over 24 hits) |
+| First hit of a sample, before it is decoded | ~3 ms (was ~37 ms before the device was warmed at boot) |
+| What the sound card adds: `baseLatency` + `outputLatency` | **~61 ms** |
+
+The device figure is the one you feel on drums, and **it is not something the app can
+change**. Three things were tried and measured, and none helped:
+
+| Attempt | Device latency |
+| --- | --- |
+| default (`latencyHint: 'interactive'`) | 61 ms |
+| `latencyHint: 'balanced'`, `0.003`, `0.01` | 71 ms (no better) |
+| `latencyHint: 'playback'`, `0.02`, `0.05` | 91–152 ms |
+| `--enable-exclusive-audio` | **133 ms** — worse, and it takes the device from other apps |
+| `--audio-buffer-size=256` | 71 ms — worse |
+
+So the app asks for the lowest latency Chromium offers and gets it; the rest is the driver's
+shared-mode buffer. Two things do help:
+
+- **Warming the output device at boot**, which is done: opening it costs tens of
+  milliseconds, and that used to land on the first hit of the session.
+- **The right output device.** Bluetooth headphones and audio through a monitor add far
+  more than a sound card does. The Settings panel shows what the driver reports, so you can
+  see the figure change when you switch devices.
+
+`npm run e2e` asserts a budget on the app's own share (median under 5 ms) so a future change
+cannot quietly put work back between the key press and the sound.
+
+Re-run the measurements at any time:
+
+```bash
+npm run measure:latency
+```
+
+---
+
 ## Profiles
 
 **Save profile…** opens the Windows save dialog, so a profile can be written anywhere you
@@ -361,6 +403,7 @@ tools/                 Diagnostics and generators, not shipped in the package
   make-font-css.js     font/    -> @font-face rules
   repro-cancel.js      drives the file picker and cancels it for real
   diagnose-memory.js   measures what loading music costs in RAM
+  measure-latency.js   times the playing path and the audio device
   diagnose-exit.js     probes which native accelerators close the window
 ```
 
@@ -388,7 +431,8 @@ Spinner and Slot inspector panels are not in the DOM, that muted keys refuse ass
 playback, that the waveform canvas has a real backing store, and that the equalizer bank
 sits above the board and the playing list beside it.
 
-`e2e` also covers the playing system itself: that pressing a key again stops it, that the
+`e2e` also checks that the output device is opened at boot rather than on the first hit,
+and holds the app's own scheduling to a latency budget. It covers the playing system itself: that pressing a key again stops it, that the
 configured fade is really a fade (still sounding part way through it, silent after), that
 turning the toggle off restores polyphonic retriggering, that the settings survive a
 profile round-trip, and that stopping a sound — by the key or by **Stop all** — also stops

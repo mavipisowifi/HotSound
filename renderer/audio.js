@@ -101,9 +101,29 @@ window.HS = window.HS || {};
      * @param {object} opts  { loop?: boolean }
      * @returns {Promise<boolean>} whether audio actually started
      */
-    async trigger(slot, opts = {}) {
-      if (!slot || !slot.path) return false;
-      let buffer = this.cache.get(slot.path);
+    /**
+     * Play a slot.
+     *
+     * When the sample is already decoded and the output device is running - the
+     * normal case while playing - the source is started synchronously, before this
+     * returns. Nothing is awaited on that path, so no microtask, DOM work or decode
+     * sits between the key press and the audio being scheduled. The promise is only
+     * needed for the first hit, which has to read and decode the file.
+     */
+    trigger(slot, opts = {}) {
+      if (!slot || !slot.path) return Promise.resolve(false);
+
+      const cached = this.cache.get(slot.path);
+      if (cached && this.ctx && this.ctx.state === 'running') {
+        this._startSource(slot, cached, opts);
+        return Promise.resolve(true);
+      }
+      return this._triggerWhenReady(slot, opts, cached);
+    }
+
+    /** The slow path: open or resume the device, decode if needed, then start. */
+    async _triggerWhenReady(slot, opts, cached) {
+      let buffer = cached;
       if (!buffer) {
         const res = await window.hotsound.readAudio(slot.path);
         if (!res || !res.ok) {
@@ -111,8 +131,13 @@ window.HS = window.HS || {};
         }
         buffer = await this.load(slot.path, new Uint8Array(res.data));
       }
-
       await this.resume();
+      this._startSource(slot, buffer, opts);
+      return true;
+    }
+
+    /** Build the per-voice graph and start it. Synchronous on purpose. */
+    _startSource(slot, buffer, opts = {}) {
       const ctx = this.ctx;
       const now = ctx.currentTime;
 

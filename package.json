@@ -18,6 +18,7 @@
     "e2e": "npm run fonts && node test/run.js e2e",
     "fonts": "node tools/make-font-css.js",
     "icons": "electron tools/make-icons.js",
+    "measure:latency": "npm run fonts && electron . --measure-latency",
     "smoke": "npm run fonts && node test/run.js smoke",
     "start": "npm run fonts && electron .",
     "test": "npm run fonts && node test/run.js both",

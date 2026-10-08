@@ -810,6 +810,24 @@ input[type="checkbox"] {
   line-height: 1.45;
 }
 
+.latency-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--line-soft);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+#latency-value {
+  margin-left: auto;
+  color: var(--mint);
+  font-weight: 600;
+}
+
 .settings-actions {
   display: flex;
   justify-content: flex-end;

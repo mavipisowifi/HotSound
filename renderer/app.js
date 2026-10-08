@@ -146,7 +146,7 @@
       'board', 'legend', 'master-volume', 'master-volume-out', 'btn-load-folder',
       'btn-open-profile', 'btn-save-profile', 'btn-stop-all', 'np-key', 'np-sound', 'np-sub',
       'np-time', 'wave-canvas', 'status-msg', 'status-voices', 'status-keys', 'profile-badge', 'developer', 'dev-name', 'dev-github', 'eq-canvas', 'playing-list', 'playing-count', 'btn-settings',
-      'settings-dialog', 'set-fade', 'set-fade-out', 'set-toggle',
+      'settings-dialog', 'set-fade', 'set-fade-out', 'set-toggle', 'latency-readout', 'latency-value',
       'drop-veil'
     ]) {
       els[id] = q(id);
@@ -329,6 +329,22 @@ function stopAllSounds(fade) {
   return n;
 }
 
+  /** Draw the preview for a slot if its sample is decoded, and start the sweep. */
+  function showWaveFor(code, slot, loop) {
+    const buffer = engine.cache.get(slot.path);
+    if (!buffer) return false;
+    wave.show({
+      code,
+      label: layout.hotkeyLabel(code),
+      name: slotTitle(slot),
+      buffer,
+      rate: slot.rate,
+      loop: loop != null ? loop : slot.loop
+    });
+    wave.play();
+    return true;
+  }
+
   /** Push the settings that the audio engine needs. */
   function applyAudioSettings() {
     engine.defaultFade = Math.max(0, state.settings.fadeMs) / 1000;
@@ -351,25 +367,23 @@ function stopAllSounds(fade) {
       return true;
     }
 
+    // Start the sound before touching the UI. The engine starts it synchronously when
+    // the sample is decoded and the device is running, so no key flash, canvas repaint
+    // or list update can come between the press and the audio.
+    const starting = engine.trigger(slot, loop != null ? { loop } : {});
+
     flashKey(code);
+    showWaveFor(code, slot, loop);
+
     try {
-      await engine.trigger(slot, loop != null ? { loop } : {});
+      await starting;
       if (slot.error) {
         slot.error = '';
         refreshKey(code);
       }
-      const buffer = engine.cache.get(slot.path);
-      if (buffer) {
-        wave.show({
-          code,
-          label: layout.hotkeyLabel(code),
-          name: slotTitle(slot),
-          buffer,
-          rate: slot.rate,
-          loop: loop != null ? loop : slot.loop
-        });
-        wave.play();
-      }
+      // The first hit of a sample only reaches the cache once it has been decoded, so
+      // its preview has to be drawn after the wait. Later hits took the path above.
+      if (!wave.isShowing(code)) showWaveFor(code, slot, loop);
       return true;
     } catch (err) {
       slot.error = err.message || String(err);
@@ -730,8 +744,30 @@ function stopAllSounds(fade) {
     els['set-toggle'].checked = !!state.settings.pressAgainToStop;
   }
 
+  /**
+   * What the output path adds before sound is audible: the device buffer plus the
+   * graph. Reported by the browser, and the part of the latency the app cannot
+   * change - so it is worth showing rather than hiding.
+   */
+  function renderLatencyReadout() {
+    const el = els['latency-value'];
+    if (!el) return;
+    if (!engine.ctx) {
+      el.textContent = 'not started yet';
+      return;
+    }
+    const base = engine.ctx.baseLatency || 0;
+    const output = engine.ctx.outputLatency || 0;
+    const totalMs = (base + output) * 1000;
+    el.textContent = totalMs > 0
+      ? `${Math.round(totalMs)} ms device latency`
+      : 'not reported by the driver';
+    el.title = `base ${(base * 1000).toFixed(1)} ms + output ${(output * 1000).toFixed(1)} ms`;
+  }
+
   function openSettings() {
     renderSettingsControls();
+    renderLatencyReadout();
     const dlg = els['settings-dialog'];
     if (typeof dlg.showModal === 'function') dlg.showModal();
     else dlg.setAttribute('open', '');
@@ -1180,6 +1216,13 @@ function stopAllSounds(fade) {
     buildBoard();
     fitBoard();
     wireUi();
+
+    // Open and start the output device now rather than on the first hit: opening it
+    // costs tens of milliseconds, and that lands squarely on the first drum hit.
+    engine.ensureContext();
+    engine.resume().catch(() => {
+      /* the first press will resume it if the device was not ready yet */
+    });
 
     applyAudioSettings();
     renderSettingsControls();

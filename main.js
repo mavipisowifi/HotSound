@@ -9,6 +9,7 @@ const IS_SMOKE_TEST = process.argv.includes('--smoke-test');
 const IS_E2E_TEST = process.argv.includes('--e2e-test');
 const IS_MEMORY_DIAG = process.argv.includes('--diagnose-memory');
 const IS_REPRO_CANCEL = process.argv.some((a) => a.startsWith('--repro-cancel'));
+const IS_LATENCY_DIAG = process.argv.includes('--measure-latency');
 
 /** @type {BrowserWindow|null} */
 let mainWindow = null;
@@ -168,6 +169,15 @@ function createWindow() {
       .run(mainWindow)
       .catch((err) => {
         console.error('REPRO FAIL: ' + err.message);
+        app.exit(9);
+      });
+  }
+
+  if (IS_LATENCY_DIAG && hasTools) {
+    require('./tools/measure-latency')
+      .run(mainWindow)
+      .catch((err) => {
+        console.error('LATENCY DIAG FAIL: ' + err.message);
         app.exit(9);
       });
   }
