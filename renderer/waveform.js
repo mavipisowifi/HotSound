@@ -136,6 +136,13 @@ window.HS = window.HS || {};
     }
 
     /** True while the playhead is sweeping. */
+    /** Follow a slot's loop setting, so the sweep wraps when the sound repeats. */
+    setLoop(loop) {
+      if (!this.state) return;
+      this.state.loop = !!loop;
+      this._frame();
+    }
+
     isPlaying() {
       return !!(this.state && this.state.playing);
     }

@@ -221,6 +221,21 @@ window.HS = window.HS || {};
     }
 
     /** Voices for one slot code, used by the "stop slot" affordance. */
+    /**
+     * Turn looping on or off for a slot's sounding voices. A BufferSource can be told
+     * to stop looping mid-flight, in which case it plays out the pass it is in and
+     * then ends - which is what turning Loop off while something is repeating should do.
+     */
+    setSlotLoop(code, on) {
+      let n = 0;
+      for (const voice of this.voices) {
+        if (!voice.slot || voice.slot.code !== code) continue;
+        voice.source.loop = !!on;
+        n++;
+      }
+      return n;
+    }
+
     stopSlot(code, fadeSeconds = this.defaultFade) {
       let n = 0;
       for (const voice of [...this.voices]) {

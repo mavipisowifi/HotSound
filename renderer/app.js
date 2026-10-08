@@ -629,6 +629,7 @@ function stopAllSounds(fade) {
     const label = layout.hotkeyLabel(code);
     const pinned = slot.twiceToStop != null;
     const twice = slotTwiceToStop(code) ? true : false;
+    const looping = !!slot.loop;
     const hasMusic = !isEmpty(slot);
 
     menu.innerHTML =
@@ -636,6 +637,9 @@ function stopAllSounds(fade) {
       `<button type="button" class="menu-item" data-action="replace">` +
       `<span class="check"></span>Replace` +
       `<span class="menu-note">${hasMusic ? 'choose a new sound' : 'choose a sound'}</span></button>` +
+      `<button type="button" class="menu-item" data-action="loop"${hasMusic ? '' : ' disabled'}>` +
+      `<span class="check">${looping ? '✓' : ''}</span>Loop` +
+      `<span class="menu-note">${hasMusic ? (looping ? 'repeats' : 'plays once') : 'nothing loaded'}</span></button>` +
       `<button type="button" class="menu-item" data-action="twice">` +
       `<span class="check">${twice ? '✓' : ''}</span>Set twice to stop` +
       `<span class="menu-note">${pinned ? 'just this key' : 'default'}</span></button>` +
@@ -662,10 +666,27 @@ function stopAllSounds(fade) {
         if (!target) return;
         if (action === 'delete') removeFromSlot(target);
         else if (action === 'replace') assignFromPicker(target);
+        else if (action === 'loop') toggleSlotLoop(target);
         else if (action === 'twice') toggleSlotTwiceToStop(target);
       });
     }
   }
+
+/** Turn looping on or off for one key, applying it to whatever is already sounding. */
+function toggleSlotLoop(code) {
+  const slot = slotFor(code);
+  if (!slot || isEmpty(slot)) return;
+  slot.loop = !slot.loop;
+
+  // A running source keeps the flag it started with, so tell the live voices too.
+  engine.setSlotLoop(code, slot.loop);
+  if (wave.isShowing(code)) wave.setLoop(slot.loop);
+
+  refreshKey(code);
+  setStatus(
+    `${layout.hotkeyLabel(code)}: ${slot.loop ? 'loops until stopped' : 'plays once'}`
+  );
+}
 
   function toggleSlotTwiceToStop(code) {
     const slot = slotFor(code);

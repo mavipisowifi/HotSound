@@ -715,10 +715,8 @@ async function run(win) {
   result.steps.push({
     name: 'right-click opens the slot menu',
     pass: slotMenu.openedOnRightClick === true
-      && slotMenu.items.length === 3
-      && slotMenu.items[0].action === 'replace'
-      && slotMenu.items[1].action === 'twice'
-      && slotMenu.items[2].action === 'delete',
+      && slotMenu.items.length === 4
+      && slotMenu.items.map((i) => i.action).join(',') === 'replace,loop,twice,delete',
     detail: `heading="${slotMenu.heading}" items=${JSON.stringify(slotMenu.items)}`
   });
 
@@ -791,6 +789,75 @@ async function run(win) {
     pass: dismissed !== '0' && replaceAfter.pickerInputs === 0
       && replaceAfter.status === 'Canceled',
     detail: `dialogs closed=${dismissed} leftoverInputs=${replaceAfter.pickerInputs} status="${replaceAfter.status}"`
+  });
+
+  // Loop, from the menu. The point is not the flag but that the sound keeps repeating and
+  // that turning it off again lets the current pass finish and end.
+  const loopFromMenu = await win.webContents.executeJavaScript(
+    `(async () => {
+       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+       const HS = window.HS;
+       const menu = document.getElementById('context-menu');
+       const node = (code) => document.querySelector('.key[data-code="' + code + '"]');
+       const out = {};
+       const kickSlot = HS.app.state.slots.KeyA;   // a 0.3s sample
+
+       // Nothing sounding, no loop yet.
+       HS.app.engine.stopAll(0.01);
+       await sleep(350);
+       let sl = HS.app.state.slots.KeyA;
+       out.loopBefore = !!sl.loop;
+       out.badgeBefore = !!node('KeyA').querySelector('.badge.loop');
+
+       node('KeyA').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 80, clientY: 80 }));
+       await sleep(60);
+       out.loopItemChecked = !!menu.querySelector('[data-action="loop"] .check').textContent.trim();
+       menu.querySelector('[data-action="loop"]').click();
+       await sleep(80);
+       sl = HS.app.state.slots.KeyA;
+       out.loopAfter = !!sl.loop;
+       out.badgeAfter = !!node('KeyA').querySelector('.badge.loop');
+
+       // Play it and wait well past the sample's length: a looping sound is still going.
+       await HS.app.triggerSlot('KeyA');
+       await sleep(700);
+       out.voicesWhileLooping = HS.app.engine.voiceCountFor('KeyA');
+
+       // Turn Loop off while it is repeating: it plays out the pass it is in, then stops.
+       node('KeyA').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 80, clientY: 80 }));
+       await sleep(60);
+       menu.querySelector('[data-action="loop"]').click();
+       await sleep(80);
+       out.loopCleared = !HS.app.state.slots.KeyA.loop;
+       out.badgeCleared = !node('KeyA').querySelector('.badge.loop');
+       await sleep(600);
+       out.voicesAfterUnloop = HS.app.engine.voiceCountFor('KeyA');
+
+       // An empty key cannot be looped.
+       node('KeyE').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 80, clientY: 80 }));
+       await sleep(60);
+       out.loopDisabledWhenEmpty = menu.querySelector('[data-action="loop"]').disabled === true;
+       out.kickHadMusic = !!(kickSlot && kickSlot.path);
+       document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', code: 'Escape', bubbles: true, cancelable: true }));
+       return out;
+     })()`,
+    true
+  );
+
+  result.steps.push({
+    name: 'Loop from the menu repeats the sound',
+    pass: loopFromMenu.loopBefore === false && loopFromMenu.loopAfter === true
+      && loopFromMenu.badgeAfter === true && loopFromMenu.voicesWhileLooping === 1,
+    detail: `flag ${loopFromMenu.loopBefore} -> ${loopFromMenu.loopAfter}, badge ${loopFromMenu.badgeBefore} -> ${loopFromMenu.badgeAfter}, `
+      + `still sounding 700ms into a 300ms sample = ${loopFromMenu.voicesWhileLooping} voice`
+  });
+
+  result.steps.push({
+    name: 'turning Loop off ends it, and empty keys cannot loop',
+    pass: loopFromMenu.loopCleared === true && loopFromMenu.badgeCleared === true
+      && loopFromMenu.voicesAfterUnloop === 0 && loopFromMenu.loopDisabledWhenEmpty === true,
+    detail: `loop cleared=${loopFromMenu.loopCleared} badge cleared=${loopFromMenu.badgeCleared} `
+      + `voices after the pass ended=${loopFromMenu.voicesAfterUnloop} loopDisabledOnEmptyKey=${loopFromMenu.loopDisabledWhenEmpty}`
   });
 
   // Phase 2: a corrupt profile on disk
