@@ -1,11 +1,11 @@
 # HotSound 1.0.0
 
-First release.
-
 A Windows soundboard whose slots **are** the keys of a PC keyboard. The app draws an ANSI
-tenkeyless layout on screen — numpad excluded — and every key on it holds a sound: press
-that key, or click it, and it plays. A sound wave preview sweeps a playhead across the
-sample while it plays. Built with Electron; the app itself makes no network requests.
+tenkeyless layout on screen — numpad excluded — and the keys on it hold your sounds: press
+a key and it plays, press it again and it stops, fading out over a time you choose.
+Equalizer-style faders run along the top of the board, the keys that are sounding list
+themselves beside it, and the sample's waveform sweeps past a playhead below. Built with
+Electron; the app itself makes no network requests.
 
 ---
 
@@ -38,19 +38,47 @@ your setup; it lives in `%APPDATA%\HotSound`.
 
 - **Every key is a slot.** Slots are bound to *physical* key positions, so they follow the
   keycap and not what your keyboard layout types.
-- **Click an empty key** to add music, **click a key with music** to play it,
-  **right-click** to take the music back off. Drop files onto keys, or **Load folder…**
-  to fill the board from a folder in one go.
-- **Sound wave preview** — the sample's waveform with a playhead sweeping it as it plays,
-  driven by the audio clock so it stays in step with what you hear.
-- **Polyphonic** — retriggering a key does not cut off the previous hit. Per-slot volume,
-  pitch, pan and loop.
+- **Getting sounds onto the board.** Click an empty key for the file picker, drop audio
+  files onto a key (extra files spill onto the keys after it), or **Load folder…** to fill
+  the board from a folder in one go.
+- **Playing, and stopping.** Click a key that has music, or press it, and it plays. Press
+  or click it again while it is playing and it stops, fading out over the time set in
+  Settings — 150 ms by default. That *twice to stop* behaviour is on by default; turn it
+  off in Settings and every hit starts another copy instead, so drum rolls overlap and
+  nothing cuts off. A single key can be pinned either way from its menu.
+- **Right-click any key for its menu:**
+  - **Replace** — puts another file on the key, through the same picker that adds sounds.
+    Cancelling changes nothing.
+  - **Loop** — the key's sound repeats until it is stopped, and the keycap shows `↻`.
+    Turning Loop off while it is repeating lets the current pass finish and then fades it
+    out.
+  - **Set twice to stop** — pins the press-again-to-stop behaviour for that one key
+    instead of following the global setting. The note on the right says `default` while it
+    follows the setting and `just this key` once it has been pinned.
+  - **Delete** — takes the music off the key.
+
+  Items that cannot apply are disabled: Loop and Delete grey out on an empty key.
+- **Shift+click** (or holding Shift with a key) toggles Loop without opening the menu.
+  Holding a looping key and letting go stops it, sampler-pad style, when twice-to-stop is
+  off.
+- **Visualisers.** Equalizer-style faders along the top of the board move with what is
+  playing; the **playing now** panel beside the board lists each sounding key with its
+  name, elapsed time and a progress bar, and clears itself as sounds end; the waveform
+  preview under the board sweeps a playhead across the sample, driven by the audio clock
+  so it stays in step with what you hear.
+- **Settings** (toolbar) holds the **fade-out time**, 0–2000 ms — 0 cuts instantly, which
+  can click on a loud sample — the default for press-again-to-stop, and a **measured
+  latency readout**, so you can see what the output path costs on your machine.
 - **Profiles** save anywhere you like through the normal Windows save dialog, and the
   location is remembered, so the profile you saved to your Desktop is the one that opens
-  next time.
-- **Toggles worth knowing:** Shift+click (or Shift+key) toggles looping; hold a looping
-  key to sustain it and release to stop; **Stop all**, `Ctrl+Escape` or `Ctrl+Alt+X`
-  fade everything out.
+  next time. The profile holds the board, the master volume and the settings.
+- **Panic:** the **Stop all** button, or `Ctrl+Escape` anywhere in the app, fades every
+  voice out at once. `Ctrl+Alt+X` does the same from anywhere in Windows, even when
+  HotSound is not the focused window.
+- **Giving the keyboard back to Windows:** click the `keys: on` badge in the status bar
+  and the board stops capturing keys — every key types normally again — until you click it
+  back on.
+- **Polyphonic.** Sounds from different keys overlap; starting one never cuts off another.
 - **Loads what Chromium can decode:** `wav`, `mp3`, `ogg`/`oga`, `flac`, `m4a`/`aac`,
   `opus`, `webm`, `aif`/`aiff`.
 
@@ -79,8 +107,8 @@ shown by the installer and is in
 ## Verify your download
 
 ```
-HotSound Setup 1.0.0.exe   96.1 MB   754ac4eb1a1449d87d1d0b80d2dc8eb5d9067bb01a5d82a28dcc4b3f4c562aee
-HotSound 1.0.0.exe         95.8 MB   e36d1e380da938542cf03db4b43f18015a6bf084c549c25fa66d846163448462
+HotSound Setup 1.0.0.exe   96.1 MB   698a31f159775002a418bb403781af31e29cb3a099ca96f08cfc11b274415a6a
+HotSound 1.0.0.exe         95.8 MB   99ddd6147a8f17d680f8cc8b3a99e38c3440f0b7f2649d34e769ee58a39204c1
 ```
 
 ```powershell
@@ -96,7 +124,8 @@ Get-FileHash "HotSound Setup 1.0.0.exe" -Algorithm SHA256
 - **`Ctrl+W` quits the program** and `Ctrl+R` reloads it. Electron's default application
   menu owns those shortcuts and they are not intercepted, because the app deliberately
   lets modifier combinations through to Windows.
-- **Right-click removes music immediately**, with no undo.
+- **Delete removes music immediately**, with no undo. It is the destructive item in the
+  menu, so it sits last, below a separator.
 - **Slots remember an absolute path.** Move the file afterwards and the key is flagged as
   errored rather than silently playing nothing.
 - **The first press on a sample decodes it**, which can add a few milliseconds; after that

@@ -101,7 +101,9 @@ runs the installer silently on purpose.
 | Press a key | Play its slot |
 | Press the same key again | Stop that sound |
 
-Replacing a key's music is right-click (remove) then click (add).
+Replacing a key's music is **Replace** in that menu. The `keys: on` badge in the status
+bar stops and resumes slot key capture — with it off, the board ignores the keyboard
+entirely and every key types normally.
 
 Each slot is keyed by `KeyboardEvent.code`, the *physical* key, so a slot stays on the
 same keycap whatever the OS layout types for it (`KeyA` is the key between Caps Lock and
@@ -500,8 +502,8 @@ without having tested anything, and that must count as a failure.
   menu is still installed (hiding the menu bar does not remove it), and its accelerators
   are live. They are not intercepted because the app deliberately lets modifier combos
   through to the OS. Removing the menu would take them away.
-- **Right-click removes music immediately**, with no undo — click to add, right-click to
-  remove.
+- **Delete in the slot menu removes music immediately**, with no undo. It is the
+  destructive item, so it sits last, below a separator.
 - **A slot's music is found by absolute path.** Moving the file later shows the key as
   errored, and reloading the profile flags it missing rather than failing silently.
 - **Muted keys cannot be OS-wide hotkeys**, since they cannot hold music.
