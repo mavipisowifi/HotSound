@@ -313,6 +313,22 @@
    * Playback
    * ---------------------------------------------------------------- */
 
+/**
+ * Stop a slot's sound and, if the waveform preview is showing it, stop the sweep
+ * too. Without the second half a stopped sound carries on looking like it is playing.
+ */
+function stopSlotSound(code) {
+  engine.stopSlot(code);
+  if (wave && wave.isShowing(code)) wave.stop();
+}
+
+/** Stop everything, including whatever the waveform preview is sweeping. */
+function stopAllSounds(fade) {
+  const n = fade == null ? engine.stopAll() : engine.stopAll(fade);
+  if (wave) wave.stop();
+  return n;
+}
+
   /** Push the settings that the audio engine needs. */
   function applyAudioSettings() {
     engine.defaultFade = Math.max(0, state.settings.fadeMs) / 1000;
@@ -330,7 +346,7 @@
     // so rapid hits overlap, which is what drum rolls want.
     if (state.settings.pressAgainToStop && engine.voiceCountFor(code) > 0) {
       flashKey(code);
-      engine.stopSlot(code);
+      stopSlotSound(code);
       setStatus(`Stopped ${layout.hotkeyLabel(code)}`);
       return true;
     }
@@ -454,7 +470,7 @@
     const wasGlobal = slot.global;
     const name = slotTitle(slot);
 
-    engine.stopSlot(code);
+    stopSlotSound(code);
     slot.path = '';
     slot.name = '';
     slot.label = '';
@@ -488,7 +504,7 @@
     if (ev.ctrlKey || ev.altKey || ev.metaKey) {
       if (ev.ctrlKey && ev.code === 'Escape') {
         ev.preventDefault();
-        engine.stopAll();
+        stopAllSounds();
         setStatus('Panic: stopped all voices');
       }
       return;
@@ -522,7 +538,7 @@
     if (isMuted(ev.code)) return;
     if (state.settings.pressAgainToStop) return;
     const slot = state.slots[ev.code];
-    if (slot && slot.loop) engine.stopSlot(ev.code);
+    if (slot && slot.loop) stopSlotSound(ev.code);
   }
 
   /* ---------------------------------------------------------------- *
@@ -995,7 +1011,7 @@
     });
 
     els['btn-stop-all'].addEventListener('click', () => {
-      const n = engine.stopAll();
+      const n = stopAllSounds();
       setStatus(`Stopped ${n} voice${n === 1 ? '' : 's'}`);
     });
 
@@ -1082,7 +1098,7 @@
     if (app && app.onGlobalTrigger) {
       app.onGlobalTrigger(({ slotId }) => {
         if (slotId === '__panic__') {
-          engine.stopAll();
+          stopAllSounds();
           setStatus('Panic: stopped all voices');
         } else {
           triggerSlot(slotId);

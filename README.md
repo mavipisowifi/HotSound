@@ -138,7 +138,10 @@ portion drawn bright and the rest dimmed. Assigning music previews its waveform 
 playing it. The readout names the key and the sample and shows elapsed / total time.
 
 The sweep is driven by the `AudioContext` clock rather than by frame deltas, so it stays
-in step with what you hear even if frames are late.
+in step with what you hear even if frames are late. Stopping a sound — pressing its key
+again, or **Stop all** — stops the sweep with it and returns the playhead to the start, so
+a stopped sound is not left looking like it is still playing. The sample stays on screen as
+a preview.
 
 The equalizer faders read the same signal through an `AnalyserNode` placed after the master
 gain, so they follow the volume you have set; it is a pass-through node, so the
@@ -387,8 +390,9 @@ sits above the board and the playing list beside it.
 
 `e2e` also covers the playing system itself: that pressing a key again stops it, that the
 configured fade is really a fade (still sounding part way through it, silent after), that
-turning the toggle off restores polyphonic retriggering, and that the settings survive a
-profile round-trip. It covers the playback visualisations too: that a sounding key appears in the Playing
+turning the toggle off restores polyphonic retriggering, that the settings survive a
+profile round-trip, and that stopping a sound — by the key or by **Stop all** — also stops
+the waveform sweep rather than leaving it running. It covers the playback visualisations too: that a sounding key appears in the Playing
 now list with its label, sound name, elapsed / total time and progress, that the row removes
 itself when the sound ends, that the list returns to idle, that the analyser reports a real
 spectrum while audio plays, and that the faders are painted rather than merely fed.

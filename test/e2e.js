@@ -43,6 +43,7 @@ async function run(win) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'hotsound-e2e-'));
   const files = {
     a: writeWav(path.join(tmp, 'kick.wav'), { freq: 120, seconds: 0.30 }),
+    long: writeWav(path.join(tmp, 'long.wav'), { freq: 200, seconds: 3.0 }),
     b: writeWav(path.join(tmp, 'snare.wav'), { freq: 300, seconds: 0.30 }),
     c: writeWav(path.join(tmp, 'hat-open.wav'), { freq: 900, seconds: 0.30 })
   };
@@ -87,6 +88,39 @@ async function run(win) {
       const afterToggle = HS.app.engine.voiceCountFor('KeyA');
       step('press again stops the sound', beforeToggle === 1 && afterToggle === 0,
            'before=' + beforeToggle + ' duringFade=' + duringFade + ' after=' + afterToggle);
+
+      // Regression: the waveform preview used to keep sweeping after the sound was
+      // stopped, so a stopped sound still looked like it was playing.
+      const waveView = HS.app.getWave();
+      HS.app.state.slots.KeyL = HS.app.state.slots.KeyL || { code: 'KeyL' };
+      Object.assign(HS.app.state.slots.KeyL, {
+        code: 'KeyL', path: ${JSON.stringify(files.long)}, name: 'long.wav',
+        volume: 1, rate: 1, pan: 0, loop: false, global: false, error: ''
+      });
+      await HS.app.triggerSlot('KeyL');
+      await sleep(200);
+      const waveWhilePlaying = { playing: waveView.isPlaying(), showing: waveView.isShowing('KeyL'), progress: waveView.progress() };
+      await HS.app.triggerSlot('KeyL');   // second press stops it
+      await sleep(250);
+      const waveAfterStop = { playing: waveView.isPlaying(), showing: waveView.isShowing('KeyL'), progress: waveView.progress() };
+      step('stopping a sound stops the waveform',
+        waveWhilePlaying.playing === true && waveWhilePlaying.showing === true
+          && waveWhilePlaying.progress > 0 && waveWhilePlaying.progress < 1
+          && waveAfterStop.playing === false && waveAfterStop.progress === null,
+        'while playing=' + JSON.stringify(waveWhilePlaying) + ' after stop=' + JSON.stringify(waveAfterStop));
+
+      // And the Stop all button has to do the same, through the app's own path.
+      await HS.app.triggerSlot('KeyL');
+      await sleep(150);
+      const playingBeforeStopAll = waveView.isPlaying();
+      document.getElementById('btn-stop-all').click();
+      await sleep(150);
+      const panicked = waveView.isPlaying();
+      step('Stop all also stops the waveform',
+        playingBeforeStopAll === true && panicked === false,
+        'before=' + playingBeforeStopAll + ' after=' + panicked);
+      HS.app.state.slots.KeyA.loop = false;
+      await sleep(120);
 
       // 3. the fade has to behave like a fade: still sounding shortly after the stop
       //    is asked for, silent once the configured time has passed

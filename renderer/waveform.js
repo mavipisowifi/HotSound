@@ -112,6 +112,34 @@ window.HS = window.HS || {};
     isShowing(code) {
       return !!(this.state && this.state.code === code);
     }
+    /**
+     * Stop the sweep, keeping the sample on screen as a preview again.
+     *
+     * Used when the sound is stopped rather than finishing: without this the playhead
+     * carries on to the end of the sample, so a stopped sound still looks like it is
+     * playing.
+     */
+    stop() {
+      const st = this.state;
+      if (this.raf != null) {
+        cancelAnimationFrame(this.raf);
+        this.raf = null;
+      }
+      if (!st) {
+        this._frame();
+        return;
+      }
+      st.playing = false;
+      st.startedAt = null;
+      st.progress = 0;
+      this._frame();
+    }
+
+    /** True while the playhead is sweeping. */
+    isPlaying() {
+      return !!(this.state && this.state.playing);
+    }
+
 
     /** Current playback position as 0..1, or null when nothing is playing. */
     progress() {
